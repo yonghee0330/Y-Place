@@ -35,3 +35,8 @@
 - 런타임/소스/서버/테스트/빌드 설정에서 이전 상표·URL·금지 문구 검색 결과 0건. 임시 스크립트는 저장소에 없음.
 - 05-* 최종 스크린샷 직접 열어 확인, REVIEW 갱신. 실제 iOS·청음·외부 클라우드는 미확인으로 유지.
 - 이 커밋을 main에 푸시하고 Pages Actions와 실제 공개 주소를 이어서 검증한다.
+
+### 배포 인증 대기
+- GitHub Pages 소스는 workflow로 설정했으나, 최초 `git push -u origin main`이 GitHub에서 거절됨: 현재 Personal Access Token에 `workflow` scope가 없어 `.github/workflows/deploy.yml` 업로드 불가.
+- SSH 에이전트에도 등록된 인증이 없음. 개인 계정 Git 인증 갱신을 요청함. 공개 사이트와 Actions 성공은 아직 확인하지 못했으며 배포 완료로 보고하지 않음.
+- 로컬 소스·5단계 커밋·최종 빌드·스크린샷은 준비 완료. 인증 갱신 후 main 푸시 → Actions 성공 → 공개 주소 입장 검사 순으로 재개한다.
