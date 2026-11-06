@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 const url='/?autostart=1&npc=0&quality=low&presence=local&weather=clear';
-async function ready(page:any){await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);}
+async function ready(page:Page){await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);}
 
 test('나무 문 클릭으로 두 공간을 왕복한다',async({page})=>{
- const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto(url+'&cam=overview&campos=0,1.6,1.8&camtgt=1,1,-2');await ready(page);
- for(const target of ['circle','shop']){
+ for(const target of ['circle','shop','circle','shop']){
   const p=await page.evaluate(()=> (window as any).__YONGSEOJEOM.portals()[0]);
   await page.evaluate((p)=> (window as any).__YONGSEOJEOM.cameraAt([0,1.65,.5],[p.x,1.3,p.z]),p);
   const xy=await page.evaluate((p)=> (window as any).__YONGSEOJEOM.project(p.x,1.2,p.z),p);
@@ -24,9 +24,9 @@ test('폭 420px: 시작→입장→앉기→책 고르기→소리 켜기',async
  const page=await context.newPage();const errors:string[]=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto('/?npc=0&quality=low&presence=local&weather=clear');
- await page.screenshot({path:'docs/screens/04-mobile-start.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/05-mobile-start.png'});
  await page.getByRole('button',{name:'책방 입장하기',exact:true}).tap();await ready(page);
- await page.screenshot({path:'docs/screens/04-mobile-shop.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/05-mobile-shop.png'});
  await page.getByRole('button',{name:'앉기 (단축키 4)',exact:true}).tap();
  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().state)).toBe('sit');
  await page.getByRole('button',{name:'책 펼치기 (단축키 2)',exact:true}).tap();
@@ -35,7 +35,7 @@ test('폭 420px: 시작→입장→앉기→책 고르기→소리 켜기',async
  // iOS에서 바뀌는 visualViewport 이벤트에 대한 레이아웃 계약 검사.
  await page.evaluate(()=>{Object.defineProperty(window.visualViewport!,'height',{configurable:true,get:()=>460});window.visualViewport!.dispatchEvent(new Event('resize'));});
  await expect.poll(()=>page.locator('#book-sheet').evaluate(e=>e.getBoundingClientRect().bottom)).toBeLessThanOrEqual(461);
- await page.screenshot({path:'docs/screens/04-mobile-keyboard-sheet.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/05-mobile-keyboard-sheet.png'});
  await page.evaluate(()=>{delete (window.visualViewport as any).height;window.visualViewport!.dispatchEvent(new Event('resize'));});
  await page.locator('#book-sheet [data-act="search"]').tap();
  await page.getByRole('option').filter({hasText:'데미안'}).tap();
@@ -45,7 +45,7 @@ test('폭 420px: 시작→입장→앉기→책 고르기→소리 켜기',async
  await expect(page.locator('[data-act="sound"]')).toHaveAttribute('aria-pressed','true');
  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.sound().enabled)).toBe(true);
  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.sound().state)).toBe('running');
- await page.screenshot({path:'docs/screens/04-mobile-reading.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/05-mobile-reading.png'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(420);
  expect(errors).toEqual([]);await context.close();
 });

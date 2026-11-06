@@ -24,11 +24,12 @@ test('모임방 5개 좌석을 실제 클릭해서 각각 앉고 중앙을 바�
    const dot=(Math.sin(me.rotationY)*-seat.x+Math.cos(me.rotationY)*-seat.z)/Math.hypot(seat.x,seat.z);
    expect(dot).toBeGreaterThan(.99);
  }
- await page.screenshot({path:'docs/screens/02-circle-seated.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/05-circle-seated.png'});
  expect(errors).toEqual([]);
 });
 
 test('용서점 창가·벤치·스툴 다섯 자리에 클릭으로 도달한다', async ({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto('/?cam=overview&campos=0,2.65,0&camtgt=0,0,-.001&npc=0&quality=low&presence=local&weather=clear');
  await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);
  await page.evaluate(()=> (window as any).__YONGSEOJEOM.cameraAt([0,2.65,0],[0,0,-.001],100));
@@ -45,5 +46,6 @@ test('용서점 창가·벤치·스툴 다섯 자리에 클릭으로 도달한�
    await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().state)).toBe('sit');
    console.log('착석 확인:',seat.id);
  }
- await page.screenshot({path:'docs/screens/03-shop-seats.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/05-shop-seats.png'});
+ expect(errors).toEqual([]);
 });

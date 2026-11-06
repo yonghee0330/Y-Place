@@ -23,3 +23,10 @@
 - 04-mobile-start / 04-mobile-shop / 04-mobile-reading: 420px 화면에서 입장 버튼·액션 버튼·책 카드·소리 켜짐 확인. 벽 앞에서 아바타 머리가 화면을 덮던 구도를 수정함.
 - 04-mobile-keyboard-sheet: visualViewport 높이 460px 시 시트가 그 안으로 이동함. 마지막 촬영은 시트 등장 애니메이션 중이므로 최종 검사에서 애니메이션 완료 상태로 다시 촬영할 것.
 - SwiftShader 정적 캡처 콘솔 오류 0. 모바일 e2e pageerror/console error 0. 실제 iOS와 하드웨어 청음은 미검증.
+
+## 5단계 — 최종 검증
+- 05-mobile-start / shop / keyboard-sheet / reading을 직접 열어 확인. 등장 애니메이션을 완료시킨 캡처에서 시트는 축소된 460px 영역 안에 있고 제목 입력·검색·취소·확인 버튼이 잘리지 않음. 상단 날씨는 좁은 화면에서 숨겨 겹침 해소.
+- 05-circle-seated / 05-shop-seats 직접 확인. 원탁 5석과 서점 5석 실제 마우스 클릭으로 이동·착석. 원탁 시선은 테이블 중심과 내적 > .99.
+- 최종 e2e 5개 전부 통과(58초): 문 왕복 2회, 모바일 독서·AudioContext running, 만석 복귀, 모임방 5석, 서점 5석. 캡처 및 검사에서 수집한 콘솔 오류 0.
+- 04-shop/counter/circle은 동일한 최종 3D 모델의 SwiftShader 캡처. 5단계에서는 검증 스크립트와 문서만 변경.
+- 실제 휴대폰의 키보드·청음·프레임률은 확인하지 못함. 제공 사진을 그대로 재현한 실측 공간이 아닌 절차 모델의 가상 배치임.
