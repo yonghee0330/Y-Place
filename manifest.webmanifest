@@ -1,7 +1,7 @@
 {
-  "name": "역곡동 용서점",
-  "short_name": "역곡동 용서점",
-  "description": "용서점 메타버스. 부천 역곡동 동네 서점 용서점의 3D 공간. 작은 서점과 다섯 자리 모임방.",
+  "name": "Y-Place",
+  "short_name": "Y-Place",
+  "description": "Y-Place 메타버스. 부천 역곡동 동네 서점 Y-Place의 3D 공간. 작은 서점과 다섯 자리 모임방.",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",

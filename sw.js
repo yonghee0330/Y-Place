@@ -3,8 +3,8 @@
 // - 글꼴처럼 많은 파일은 처음 쓸 때 캐시한다(캐시 우선).
 // - 페이지 이동은 네트워크 우선, 오프라인이면 캐시한 index.html을 준다.
 // GitHub Pages 하위 경로(/yongseojeom/)에서도 동작하도록 모든 경로는 sw.js 위치 기준 상대 경로다.
-const VERSION = 'e06c0118f4';
-const PRECACHE = ["./","assets/index-knxFq6BI.js","assets/three-ZYwJsqG4.js","assets/index-Dx8aKcMZ.css","index.html","manifest.webmanifest","icons/icon.svg","icons/icon-192.png","icons/icon-512.png"];
+const VERSION = '2c14b719a5';
+const PRECACHE = ["./","assets/index-XLMXmFrT.js","assets/three-ZYwJsqG4.js","assets/index-Gm9Tc4Bd.css","index.html","manifest.webmanifest","icons/icon.svg","icons/icon-192.png","icons/icon-512.png"];
 const CACHE = `yongseojeom-${VERSION}`;
 
 self.addEventListener('install', (event) => {
