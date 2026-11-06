@@ -1,17 +1,11 @@
 // 벽 간판·액자·시계. 허브에서만 풍성하게, 서브룸은 간판만.
 import * as THREE from 'three';
 import { Rng } from '../../core/rng';
-import { MergeBucket, bevelBox, projectUV, trs } from '../geom';
+import { MergeBucket, bevelBox, trs } from '../geom';
 import { ROOM, currentSpaceId } from '../layout';
 
 export function buildWallDecor(bucket: MergeBucket, rng: Rng): void {
-  const r = rng.fork('decor');
-  const signM = trs(-ROOM.w * 0.22, 2.48, ROOM.z0 + 0.02);
-  const sign = bevelBox(0.9, 0.28, 0.04, 0.008);
-  projectUV(sign, 'x', { offset: [r.float(), r.float()] });
-  bucket.add('walnut', sign, signM);
-  bucket.add('paper', bevelBox(0.78, 0.18, 0.01, 0.002), signM.clone().multiply(trs(0, 0, 0.025)), 0xf4ead8);
-
+  void rng;
   if (currentSpaceId() !== 'shop') return;
 
   const frame = (m: THREE.Matrix4, w: number, h: number, mat: string) => {

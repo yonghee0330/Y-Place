@@ -1,3 +1,4 @@
+import { Rng } from '../core/rng';
 // 용서점과 작은 모임방. 가구·이동·클릭이 공유하는 공간 데이터.
 // x: 왼쪽(-)→오른쪽(+), z: 뒤 창벽(-)→앞 입구(+). 단위 m, 바닥 y=0.
 // 빌드·전환 시 applyLayout()으로 활성 공간 상수를 맞춘다.
@@ -48,6 +49,7 @@ export interface SpaceLayout {
   islands: (Placement & { w: number; d: number; h: number; kind: 'flat' | 'stand' })[];
   partitions: PartitionWall[];
   readingTable: (Placement & { w: number; d: number; h: number }) | null;
+  roundTable: { x: number; z: number; r: number; h: number } | null;
   chairs: Placement[];
   storeTable: (Placement & { w: number; d: number; h: number }) | null;
   storeChairs: Placement[];
@@ -84,7 +86,7 @@ function emptyBase(id: SpaceId, label: string, room: RoomBounds): Omit<SpaceLayo
     id, label, room,
     partitions: [],
     sofa: null, coffeeTable: null, rug: null, bench: null, barTable: null, eventBoard: null, counter: null,
-    readingTable: null, storeTable: null, storeChairs: [],
+    roundTable: null, readingTable: null, storeTable: null, storeChairs: [],
   };
 }
 
@@ -98,11 +100,24 @@ function makeShop(): SpaceLayout {
   };
 }
 function makeCircle(): SpaceLayout {
-  const spawn = { x: 0, z: 1.3, ry: Math.PI };
+  const r = new Rng(2018);
+  const chairs = Array.from({ length: 5 }, (_, i) => {
+    const angle = i * Math.PI * 2 / 5;
+    const x = Math.sin(angle) * 1.08, z = Math.cos(angle) * 1.08;
+    return { x, z, ry: Math.atan2(-x, -z) + r.range(-0.025, 0.025) };
+  });
+  const spawn = { x: -1.35, z: 1.45, ry: Math.PI };
   return { ...emptyBase('circle', '작은 모임방', roomOf(4.2, 4.2, 2.7)),
-    openings: [], shelves: [], islands: [], chairs: [], seats: [],
-    floorLamps: [], floorPlants: [], pendants: [{ x: 0, z: 0, drop: 0.5 }],
-    spawn, spawns: [spawn],
+    openings: [],
+    shelves: [{ x: 1.88, z: -0.95, ry: -Math.PI / 2, w: 1.2, wing: 'C' }],
+    islands: [], chairs,
+    roundTable: { x: 0, z: 0, r: 0.65, h: 0.73 },
+    rug: { x: 0, z: 0, w: 2.65, d: 2.65, round: true },
+    seats: chairs.map((c, i) => ({ ...c, id: `circle-${i+1}`, y: 0.475, approach: -1,
+      from: { x: c.x * 1.35, z: c.z * 1.35 } })),
+    floorLamps: [], floorPlants: [{x: -1.7, z: -0.7, scale: 0.8}],
+    pendants: [{ x: 0, z: 0, drop: 0.65 }],
+    spawn, spawns: [spawn, { x: 1.5, z: 1.5, ry: Math.PI }],
     portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: '용서점' }],
   };
 }
@@ -150,6 +165,7 @@ export function applyLayout(id: SpaceId): SpaceLayout {
   SPAWNS.splice(0, SPAWNS.length, ...L.spawns);
   Object.assign(SPAWN, L.spawn);
 
+  assignOrClear(ROUND_TABLE, L.roundTable);
   assignOrClear(READING_TABLE, L.readingTable);
   assignOrClear(STORE_TABLE, L.storeTable);
   assignOrClear(SOFA, L.sofa);
@@ -196,6 +212,7 @@ export const ISLANDS = [...HUB.islands];
 export const PARTITIONS: PartitionWall[] = [...HUB.partitions];
 export const ISLAND = ISLANDS[0];
 export const READING_TABLE: Placement & { w: number; d: number; h: number } = { ...(HUB.readingTable!) };
+export const ROUND_TABLE = { _empty: true } as unknown as NonNullable<SpaceLayout['roundTable']>;
 export const CHAIRS: Placement[] = [...HUB.chairs];
 export const STORE_TABLE: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
 export const STORE_CHAIRS: Placement[] = [];
@@ -231,8 +248,8 @@ export function colliders(): Collider[] {
     flags?: { eventBoard?: boolean },
   ) => {
     if (w <= 0.01 || d <= 0.01) return;
-    const rot = Math.abs(Math.sin(ry)) > 0.5;
-    const hw = (rot ? d : w) / 2, hd = (rot ? w : d) / 2;
+    const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry));
+    const hw = (w * c + d * s) / 2, hd = (w * s + d * c) / 2;
     list.push({
       x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd, h,
       seatable: !!seats, seats,
@@ -264,7 +281,9 @@ export function colliders(): Collider[] {
   if (isPresent(READING_TABLE)) {
     rect(READING_TABLE.x, READING_TABLE.z, READING_TABLE.w, READING_TABLE.d, 0, READING_TABLE.h);
   }
-  CHAIRS.forEach((c, i) => rect(c.x, c.z, 0.36, 0.36, 0, 0.84, [`chair-${i + 1}`]));
+  if (isPresent(ROUND_TABLE)) rect(ROUND_TABLE.x, ROUND_TABLE.z, ROUND_TABLE.r * 2, ROUND_TABLE.r * 2, 0, ROUND_TABLE.h);
+  // 全 좌석: 의자 방석 높이의 개별 클릭 상자. 큰 가구가 뒷좌석 클릭을 가리지 않는다.
+  for (const seat of SEATS) rect(seat.x, seat.z, 0.44, 0.44, seat.ry, seat.y + 0.04, [seat.id]);
   if (isPresent(SOFA)) {
     const sofaIds = SEATS.filter((s) => s.id.startsWith('sofa-')).map((s) => s.id);
     rect(SOFA.x, SOFA.z, SOFA.w, SOFA.d, SOFA.ry, 0.85, sofaIds);

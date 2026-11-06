@@ -14,7 +14,7 @@ import { createMaterials } from './materials';
 import { BookCollector, fillCompartment, stackBooks } from './props/books';
 import { buildContactShadows } from './props/contactShadows';
 import {
-  buildBarTable, buildBench, buildCoffeeTable, buildCounter, buildCounterStool, buildIslands, buildReadingTable,
+  buildBarTable, buildBench, buildCoffeeTable, buildCounter, buildCounterStool, buildIslands, buildReadingTable, buildRoundTable,
 } from './props/furniture';
 import { buildLamps } from './props/lamps';
 import { buildPlant } from './props/plants';
@@ -90,6 +90,7 @@ function buildOneSpace(
 
   buildIslands(bucket, rng, books);
   buildReadingTable(bucket, rng, books);
+  buildRoundTable(bucket, rng, books);
   buildBarTable(bucket, rng, books);
   if (!(id === 'shop' && hasModel('counter'))) buildCounter(bucket, rng, books);
   if (id === 'shop') buildCounterStool(bucket, rng);

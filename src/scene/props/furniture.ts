@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Rng } from '../../core/rng';
 import { MergeBucket, bevelBox, projectUV, taperLeg, trs } from '../geom';
 import {
-  BAR_TABLE, BENCH, CHAIRS, COFFEE_TABLE, COUNTER, ISLANDS, READING_TABLE, SEATS, isPresent,
+  BAR_TABLE, BENCH, CHAIRS, COFFEE_TABLE, COUNTER, ISLANDS, READING_TABLE, ROUND_TABLE, SEATS, isPresent,
 } from '../layout';
 import { BookCollector, displayBook, stackBooks } from './books';
 
@@ -300,4 +300,34 @@ export function buildCoffeeTable(bucket: MergeBucket, rng: Rng, books: BookColle
   bucket.add('ceramic', cup, at(trs(0.36, h + 0.03, -0.12)), 0xeae4d8);
   const saucer = new THREE.CylinderGeometry(0.07, 0.065, 0.008, 24);
   bucket.add('ceramic', saucer, at(trs(0.36, h + 0.004, -0.12)), 0xeae4d8);
+}
+
+/** 지름 1.3m 원탁. 모서리가 말린 상판, 세 방향으로 벌어진 테이퍼 다리. */
+export function buildRoundTable(bucket: MergeBucket, rng: Rng, books: BookCollector): void {
+  if (!isPresent(ROUND_TABLE)) return;
+  const { x, z, r, h } = ROUND_TABLE;
+  const random = rng.fork('round-table');
+  const at = (m: THREE.Matrix4) => trs(x, 0, z).multiply(m);
+  const profile = [[0, h-.055], [r-.014, h-.055], [r-.003,h-.048], [r,h-.035], [r-.003,h-.012], [r-.014,h], [0,h]];
+  woodPart(bucket, random, 'honey', new THREE.LatheGeometry(profile.map(([x,y])=>new THREE.Vector2(x,y)), 64), 'x', at(trs(0,0,0)));
+  bucket.add('walnut', new THREE.CylinderGeometry(.22,.18,.085,32), at(trs(0,h-.1,0)));
+  for (let i=0;i<3;i++) {
+    const a=i*Math.PI*2/3;
+    woodPart(bucket,random,'honey',taperLeg(h-.08,.075,.04),'y',at(trs(Math.sin(a)*.4,0,Math.cos(a)*.4, -.20*Math.cos(a),0,.20*Math.sin(a))));
+  }
+  stackBooks(at(trs(-.2,h,.05,0,.25)),random,books,2);
+  for(let i=0;i<5;i++) {
+    const a=i*Math.PI*2/5, cx=Math.sin(a)*.47, cz=Math.cos(a)*.47;
+    bucket.add('ceramic',new THREE.CylinderGeometry(.066,.061,.009,24),at(trs(cx,h+.005,cz)));
+    const cup=new THREE.LatheGeometry([new THREE.Vector2(.026,0),new THREE.Vector2(.041,.05),new THREE.Vector2(.037,.054),new THREE.Vector2(.032,.012)],24);
+    bucket.add('ceramic',cup,at(trs(cx,h+.01,cz)));
+    bucket.add('walnut',new THREE.CircleGeometry(.033,24),at(trs(cx,h+.052,cz,-Math.PI/2)),0x3d2212);
+    bucket.add('ceramic',new THREE.TorusGeometry(.022,.005,8,16),at(trs(cx+.05,h+.035,cz)));
+  }
+  bucket.add('ceramic',new THREE.LatheGeometry([[0,0],[.045,0],[.055,.08],[.03,.12],[.026,.17]].map(([x,y])=>new THREE.Vector2(x,y)),24),at(trs(.12,h,-.12)),0x687c67);
+  for(let i=0;i<3;i++) {
+    bucket.add('leaf',new THREE.CylinderGeometry(.002,.003,.22,6),at(trs(.12+i*.014,h+.23,-.12,0,0,(i-1)*.15)),0x456342);
+    bucket.add('ceramic',new THREE.SphereGeometry(.023,12,8),at(trs(.12+(i-1)*.04,h+.34,-.12)),0xe5ccb0);
+  }
+  CHAIRS.forEach((c,i)=>buildChairAt(bucket,random.fork(`circle-${i}`),trs(c.x,0,c.z,0,c.ry)));
 }
