@@ -1,0 +1,16 @@
+node_modules
+dist
+test-results
+playwright-report
+.DS_Store
+*.tmp.mjs
+.env
+.env.local
+.env.*.local
+supabase/.temp
+
+docs/reference/
+docs/bbooks-m-archive/
+docs/yongseojeom/
+.env.*
+!.env.example

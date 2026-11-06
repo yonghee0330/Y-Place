@@ -1,0 +1,33 @@
+{
+  "name": "yongseojeom",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "capture": "vite build && tsx scripts/capture.ts",
+    "server": "tsx server/index.ts",
+    "test:e2e": "playwright test",
+    "perf": "vite build && tsx scripts/perf.ts",
+    "icons": "tsx scripts/icons.ts"
+  },
+  "dependencies": {
+    "@fontsource/noto-serif-kr": "5.3.1",
+    "@supabase/supabase-js": "2.118.0",
+    "pretendard": "1.3.9",
+    "three": "0.187.0",
+    "ws": "8.22.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.6",
+    "@types/three": "0.187.0",
+    "@types/ws": "8.18.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}

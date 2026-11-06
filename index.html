@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a1612" />
+    <meta name="description" content="역곡동 용서점 — 부천 역곡동 동네책방 용서점의 메타버스 공간. 2018년에 문을 연 큐레이팅 동네책방." />
+    <title>역곡동 용서점</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="용서점" />
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="scene" role="img" aria-label="역곡동 용서점 실내. 벽마다 책이 꽂힌 나무 서가와 독서 테이블이 있다."></canvas>
+    </div>
+
+    <section id="start" class="screen start" aria-labelledby="start-title">
+      <div class="start-wall" aria-hidden="true"></div>
+      <div class="start-stage">
+        <div class="start-doorway" aria-hidden="true">
+          <div class="start-glow"></div>
+          <div class="start-door-art">
+            <div class="start-leaf start-leaf-l"></div>
+            <div class="start-leaf start-leaf-r"></div>
+          </div>
+        </div>
+
+        <div class="start-words">
+          <p class="start-kicker">부천 역곡동 용서점</p>
+          <h1 id="start-title" class="start-title">역곡동<br />용서점</h1>
+          <p class="start-copy">2018년, 골목에서 시작된 책방.<br />책 한 권과 잠시 머무는 시간.</p>
+          <button type="button" id="start-manager" class="start-m-secret" aria-label="운영자 입장">운영자</button>
+          <button id="start-enter" class="start-enter" type="button" aria-label="책방 입장하기">책방 입장하기</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="manager-gate" class="screen manager-gate" hidden aria-labelledby="manager-gate-title">
+      <div class="manager-gate-card">
+        <p class="manager-gate-kicker">역곡동 용서점</p>
+        <h2 id="manager-gate-title" class="manager-gate-title">매니저 입장</h2>
+        <p class="manager-gate-copy">입장 코드를 입력해 주세요.</p>
+        <label class="manager-gate-label">
+          <span class="visually-hidden">입장 코드</span>
+          <input id="manager-code" class="manager-gate-input" type="password" autocomplete="off" spellcheck="false" maxlength="40" placeholder="코드" />
+        </label>
+        <p id="manager-gate-error" class="manager-gate-error" role="alert" hidden>코드가 맞지 않아요</p>
+        <div class="manager-gate-actions">
+          <button type="button" class="btn" id="manager-cancel">돌아가기</button>
+          <button type="button" class="btn btn-primary" id="manager-enter">들어가기</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="loading" class="screen loading" aria-live="polite" hidden>
+      <div class="loading-inner">
+        <p class="loading-title">서점 문을 여는 중</p>
+        <div class="loading-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="불러오는 중">
+          <div class="loading-fill" id="loading-fill"></div>
+        </div>
+        <p class="loading-step" id="loading-step">준비하는 중</p>
+      </div>
+    </section>
+
+    <section id="full" class="screen full" hidden aria-labelledby="full-title">
+      <div class="full-inner">
+        <p class="full-kicker">용서점</p>
+        <h1 id="full-title" class="full-title">자리가 가득 찼어요</h1>
+        <p class="full-copy" id="full-copy">지금은 8명이 모두 모였어요.<br />누군가 나가면 다시 들어올 수 있어요.</p>
+        <button id="full-back" class="start-enter" type="button">첫 화면으로</button>
+      </div>
+    </section>
+
+    <div id="ui"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

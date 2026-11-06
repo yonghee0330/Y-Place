@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+import fs from 'node:fs';
+const stage = process.argv[2] || 'latest';
+fs.mkdirSync('docs/screens', {recursive:true});
+const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
+const page=await browser.newPage({viewport:{width:1440,height:960}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+await page.goto('http://127.0.0.1:4173/?cam=overview&campos=1.8,2.25,1.8&camtgt=0,1,-0.5&seed=1&npc=0&quality=low&presence=local&weather=clear');
+await page.waitForFunction(()=>window.__YONGSEOJEOM_READY===true,{},{timeout:90000});
+await page.screenshot({path:`docs/screens/${stage}-shop.png`});
+await page.evaluate(()=>window.__YONGSEOJEOM.enterSpace('circle'));
+await page.waitForTimeout(1500);
+await page.screenshot({path:`docs/screens/${stage}-circle.png`});
+console.log(JSON.stringify({errors}));await browser.close();
