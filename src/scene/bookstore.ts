@@ -6,10 +6,9 @@ import type { LoadingScreen } from '../ui/loading';
 import { buildExterior, type Exterior } from './exterior';
 import { MergeBucket, trs } from './geom';
 import {
-  ARMCHAIRS, COUNTER, FLOOR_PLANTS, SPACE_ORDER, applyLayout, type Placement, type SpaceId,
+  ARMCHAIRS, COUNTER, FLOOR_PLANTS, SPACE_ORDER, applyLayout, type SpaceId,
 } from './layout';
 import { buildLighting, type Lighting } from './lighting';
-import { hasModel, loadOrFallback } from './loadOrFallback';
 import { createMaterials } from './materials';
 import { BookCollector, displayBook, fillCompartment, stackBooks } from './props/books';
 import { buildContactShadows } from './props/contactShadows';
@@ -97,7 +96,7 @@ function buildOneSpace(
   buildSideTable(bucket, rng, books);
   ARMCHAIRS.forEach((c,i)=>buildWingbackArmchair(bucket,rng.fork(`armchair-${i}`),trs(c.x,0,c.z,0,c.ry)));
   buildBarTable(bucket, rng, books);
-  if (!(id === 'shop' && hasModel('counter'))) buildCounter(bucket, rng, books);
+  buildCounter(bucket, rng, books);
   if (id === 'shop') buildCounterStool(bucket, rng);
   buildSofa(bucket, rng);
   buildBench(bucket, rng, books);
@@ -159,15 +158,6 @@ export async function buildBookstore(
     root.add(built.view.group);
   }
   applyLayout('shop');
-
-  // glb 카운터(있을 때만 허브에)
-  if (hasModel('counter')) {
-    const o = await loadOrFallback('counter', () => new THREE.Group());
-    const at = { x: COUNTER.x, z: COUNTER.z, ry: COUNTER.ry } as Placement;
-    o.position.set(at.x, 0, at.z);
-    o.rotation.y = at.ry;
-    spaces.shop.group.add(o);
-  }
 
   const windowRain = buildWindowRain(sharedGlass.mesh?.geometry ?? new THREE.BufferGeometry());
   windowRain.set(q.windowRainShader, true);

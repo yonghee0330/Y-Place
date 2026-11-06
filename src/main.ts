@@ -4,13 +4,13 @@ import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './style.css';
 
 import { startApp } from './app';
-import { checkManagerCode, loadManagerSession, saveManagerSession } from './core/manager';
+import { checkManagerCode, managerCode, loadManagerSession, saveManagerSession } from './core/manager';
 import { readParams } from './core/params';
 import { registerServiceWorker } from './pwa/register';
 import { LoadingScreen } from './ui/loading';
 import { fetchBucheonWeather, weatherAria } from './weather/bucheon';
 
-// 닉네임용 동네(동) — IP로 대략 추정(실패 시 경인 랜덤). 시작 화면에 미리 워밍.
+// 닉네임은 지역 목록에서 무작위로 정하며 위치 정보를 조회하지 않는다.
 
 
 declare global {
@@ -28,6 +28,7 @@ const startEl = document.getElementById('start')!;
 const gateEl = document.getElementById('manager-gate')!;
 const codeInput = document.getElementById('manager-code') as HTMLInputElement;
 const gateError = document.getElementById('manager-gate-error')!;
+document.getElementById('start-manager')!.hidden = !managerCode();
 
 // 캔버스 설명만 부천 날씨에 맞춘다(시작 문구는 고정)
 void fetchBucheonWeather(params.weather).then((w) => {

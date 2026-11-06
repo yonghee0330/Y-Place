@@ -2,7 +2,7 @@
 // - 앱 껍데기(html·js·css·manifest·아이콘)는 설치할 때 미리 캐시한다.
 // - 글꼴처럼 많은 파일은 처음 쓸 때 캐시한다(캐시 우선).
 // - 페이지 이동은 네트워크 우선, 오프라인이면 캐시한 index.html을 준다.
-// GitHub Pages 하위 경로(/readplace_v2/)에서도 동작하도록 모든 경로는 sw.js 위치 기준 상대 경로다.
+// GitHub Pages 하위 경로(/yongseojeom/)에서도 동작하도록 모든 경로는 sw.js 위치 기준 상대 경로다.
 const VERSION = '__VERSION__';
 const PRECACHE = __PRECACHE__;
 const CACHE = `yongseojeom-${VERSION}`;

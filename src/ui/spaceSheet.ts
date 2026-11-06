@@ -9,7 +9,7 @@ export class SpaceSheet {
 
   constructor() {
     this.sheet.body.innerHTML = `
-      <p class="sheet-text">가고 싶은 공간을 고르세요. 포털로 걸어가도 같은 확인이 열려요.</p>
+      <p class="sheet-text">가고 싶은 공간을 고르세요. 공간 안의 나무 문을 눌러도 이동할 수 있어요.</p>
       <div class="space-list" data-list role="list"></div>`;
     this.list = this.sheet.body.querySelector('[data-list]')!;
     this.sheet.onClose = () => {

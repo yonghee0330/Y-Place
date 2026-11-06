@@ -10,6 +10,7 @@ test('모임방 5개 좌석을 실제 클릭해서 각각 앉고 중앙을 바�
  const seats=await page.evaluate(()=> (window as any).__YONGSEOJEOM.seats());
  expect(seats).toHaveLength(5);
  for(const seat of seats){
+   console.log("클릭 시작:",seat.id);
    const point=await page.evaluate((s)=> (window as any).__YONGSEOJEOM.project(s.x,s.y+.03,s.z),seat);
    expect(point.x).toBeGreaterThan(0);
    expect(point.y).toBeGreaterThan(45);
@@ -34,6 +35,7 @@ test('용서점 창가·벤치·스툴 다섯 자리에 클릭으로 도달한�
  const seats=await page.evaluate(()=> (window as any).__YONGSEOJEOM.seats());
  expect(seats).toHaveLength(5);
  for(const seat of seats){
+   console.log("클릭 시작:",seat.id);
    const point=await page.evaluate((s)=> (window as any).__YONGSEOJEOM.project(s.x,s.y+.03,s.z),seat);
    expect(point.x).toBeGreaterThan(0);
    expect(point.y).toBeGreaterThan(45);

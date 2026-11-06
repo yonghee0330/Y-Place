@@ -1,4 +1,4 @@
-// 가오픈 포스트잇 보드: 하루 단위. 오늘은 붙이기, 지난 보드는 보기만.
+// 용서점 포스트잇 보드: 하루 단위. 오늘은 붙이기, 지난 보드는 보기만.
 import {
   POSTIT_COLORS, POSTIT_MAX_LEN, POSTIT_SHAPES, colorHex, formatBoardDayLabel,
   shiftBoardDay, todayBoardDay,
@@ -353,7 +353,7 @@ export class PostitWall {
       if (this.isToday()) this.makeDraggable(el, n);
       const textEl = el.querySelector<HTMLElement>('.postit-note-text')!;
       textEl.textContent = n.text;
-      el.querySelector('.postit-note-nick')!.textContent = n.nickname.replace(/서든리/g, '운영자');
+      el.querySelector('.postit-note-nick')!.textContent = n.nickname;
       this.board.appendChild(el);
       requestAnimationFrame(() => fitNoteText(textEl));
     }

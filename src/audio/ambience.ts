@@ -44,6 +44,11 @@ export class Ambience {
   private weather: WeatherKind = 'rain';
   /** 합성 패드 음악(유튜브 BGM 쓸 때는 끔) */
   musicSynth = false;
+  private musicVolume = .45;
+  setMusicVolume(v: number): void {
+    this.musicVolume = Math.max(0,Math.min(1,v/100));
+    if (this.musicBus && this.ctx) this.musicBus.gain.setTargetAtTime(this.musicSynth ? this.musicVolume : 0,this.ctx.currentTime,.15);
+  }
   /** 자연 소리(비·새) 0~1. 날씨 버스와 별도로 항상 깔 수 있다. */
   natureLevel = 0;
   enabled = false;
@@ -82,7 +87,7 @@ export class Ambience {
     this.snowGain.gain.value = this.weather === 'snow' ? 1 : 0;
     this.clearGain.gain.value = this.weather === 'clear' ? 1 : 0;
     this.musicBus = ctx.createGain();
-    this.musicBus.gain.value = this.musicSynth ? 1 : 0;
+    this.musicBus.gain.value = this.musicSynth ? this.musicVolume : 0;
     this.musicBus.connect(this.master);
     this.buildRain(ctx, this.rainGain);
     this.buildSnow(ctx, this.snowGain);
@@ -105,7 +110,7 @@ export class Ambience {
     const now = this.ctx.currentTime;
     this.musicBus.gain.cancelScheduledValues(now);
     this.musicBus.gain.setValueAtTime(this.musicBus.gain.value, now);
-    this.musicBus.gain.linearRampToValueAtTime(on ? 1 : 0, now + 0.6);
+    this.musicBus.gain.linearRampToValueAtTime(on ? this.musicVolume : 0, now + 0.6);
     if (on && this.enabled) this.startScheduler();
     else if (!on) this.stopScheduler();
   }

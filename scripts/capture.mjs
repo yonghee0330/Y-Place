@@ -6,7 +6,7 @@ const browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-u
 const page=await browser.newPage({viewport:{width:1440,height:960}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 await page.goto('http://127.0.0.1:4173/?cam=overview&campos=0,2.4,2.02&camtgt=0,.7,-.5&seed=1&npc=0&quality=low&presence=local&weather=clear');
-await page.waitForFunction(()=>window.__YONGSEOJEOM_READY===true,{},{timeout:90000});
+await page.waitForFunction(()=>window.__YONGSEOJEOM_READY===true,{},{timeout:240000});
 await page.screenshot({path:`docs/screens/${stage}-shop.png`});
 await page.evaluate(()=>window.__YONGSEOJEOM.cameraAt([0,2.3,-1.95],[0,.9,1.4]));
 await page.waitForTimeout(500);

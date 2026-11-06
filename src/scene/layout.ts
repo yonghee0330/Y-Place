@@ -25,13 +25,13 @@ export interface Collider {
   eventBoard?: boolean;
 }
 export interface PortalDef {
-  /** 이 포털이 보내는 곳(허브의 포털은 서브룸, 서브룸은 보통 hub) */
+  /** 이 문으로 연결되는 공간 */
   to: SpaceId;
   x: number; z: number; ry: number;
   label: string;
   /** 클릭/트리거 박스 크기 */
   w: number; d: number;
-  /** true면 문짝 없이 문틀만(1인실처럼 등 뒤가 뚫려 보이게) */
+  /** true면 문짝 없이 문틀만 생성 */
   open?: boolean;
 }
 
@@ -62,7 +62,7 @@ export interface SpaceLayout {
   bench: (Placement & { w: number; d: number; h: number }) | null;
   /** 창가 바테이블(높은 테이블) */
   barTable: (Placement & { w: number; d: number; h: number }) | null;
-  /** 가오픈 포스트잇 이벤트 보드(허브 창가) */
+  /** 용서점 방명록 보드 */
   eventBoard: { x: number; z: number; ry: number; w: number; h: number } | null;
   counter: (Placement & { w: number; d: number; h: number }) | null;
   floorLamps: Placement[];

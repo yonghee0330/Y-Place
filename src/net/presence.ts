@@ -107,8 +107,7 @@ export function sanitizeSharedBook(v: unknown): SharedBook | null {
 export function sanitizePlayerState(s: PlayerState): PlayerState {
   const book = s.state === 'read' ? sanitizeSharedBook(s.book) : null;
   const role = s.role === 'manager' ? 'manager' : null;
-  // 예전 버전 브라우저가 아직 보내는 옛 표기(서든리)를 받는 쪽에서 바로잡는다
-  const nickname = s.nickname.replace(/서든리/g, '운영자');
+  const nickname = s.nickname;
   return { ...s, nickname, book, role };
 }
 

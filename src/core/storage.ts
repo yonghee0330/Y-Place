@@ -77,7 +77,7 @@ export function loadSettings(): Settings {
   const s = read<Settings>(SETTINGS_KEY, {
     quality: 'auto',
     reducedMotion: false,
-    npc: true,
+    npc: false,
     sound: false,
     music: true,
     musicVolume: DEFAULT_MUSIC_VOLUME,

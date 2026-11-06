@@ -1,7 +1,8 @@
 // 서점 배경음악: YouTube 임베드(잔잔한 플레이리스트). 사용자 제스처 이후에만 재생.
 // 화면에는 보이지 않고 소리만 쓴다. 끄면 iframe을 비워 즉시 멈춘다.
 
-const YT_ID = 'xjOG0beBrgM';
+const YT_ID = (import.meta.env.VITE_BGM_YOUTUBE_ID as string | undefined)?.trim() || '';
+export const hasConfiguredBgm = /^[A-Za-z0-9_-]{11}$/.test(YT_ID);
 
 export class BookstoreBgm {
   enabled = false;
@@ -16,6 +17,7 @@ export class BookstoreBgm {
   private volume = 42;
 
   setEnabled(on: boolean): void {
+    on = on && hasConfiguredBgm;
     this.enabled = on;
     if (on) void this.play();
     else this.stop();
@@ -55,6 +57,7 @@ export class BookstoreBgm {
 
   /** 유튜브 API를 미리 받아 둔다(탭 직후에 바로 플레이어를 만들 수 있게). */
   warm(): void {
+    if (!hasConfiguredBgm) return;
     void this.loadApi();
   }
 

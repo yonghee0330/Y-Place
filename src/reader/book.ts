@@ -1,6 +1,6 @@
 // 지금 읽는 책 메타데이터(제목·저자·출판사)와 표지 URL.
 // 본문은 다루지 않는다. 표지: 카카오 책(서버 프록시) → Google Books → Open Library → 제목 카드.
-import { fetchKakaoBook, setKakaoApiBase } from './kakaoApi';
+import { fetchKakaoBook, setKakaoApiBase, getKakaoApiBase } from './kakaoApi';
 
 export interface ReadingBook {
   title: string;
@@ -63,6 +63,7 @@ export async function lookupCover(
 ): Promise<string | null> {
   const t = title.trim();
   if (!t) return null;
+  if (!getKakaoApiBase()) return drawCoverCard(t, author, publisher);
   const kakao = await fetchKakaoBook(t, author, publisher, signal);
   if (kakao.ok && kakao.item?.coverUrl?.startsWith('http')) return kakao.item.coverUrl;
   const fromGoogle = await searchGoogleBooks(t, author, publisher, signal);

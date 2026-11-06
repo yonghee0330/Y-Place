@@ -8,11 +8,11 @@
     "build": "vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
-    "capture": "vite build && tsx scripts/capture.ts",
+    "capture": "node scripts/capture.mjs",
     "server": "tsx server/index.ts",
     "test:e2e": "playwright test",
-    "perf": "vite build && tsx scripts/perf.ts",
-    "icons": "tsx scripts/icons.ts"
+    "test:layout": "node --import tsx tests/navigation.ts",
+    "test:presence": "node --import tsx tests/presence.ts"
   },
   "dependencies": {
     "@fontsource/noto-serif-kr": "5.3.1",

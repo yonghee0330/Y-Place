@@ -1,5 +1,5 @@
 // 자동 닉네임: 동네(동) + 세계문학 고전 등장인물. 예: "망원동 안나"
-// 동네는 IP로 지역만 살짝 참고하고, 경인 전체에서 넓게 고른다.
+// 위치 조회 없이 로컬 목록에서 무작위로 고른다.
 
 /** 서울 */
 const SEOUL_DONGS = [
@@ -30,16 +30,6 @@ const GYEONGGI_DONGS = [
 ];
 
 const ALL_GYEONGIN = [...SEOUL_DONGS, ...BUCHEON_DONGS, ...INCHEON_DONGS, ...GYEONGGI_DONGS];
-
-type RegionId = 'seoul' | 'bucheon' | 'incheon' | 'gyeonggi' | 'all';
-
-const REGION_POOL: Record<RegionId, readonly string[]> = {
-  seoul: SEOUL_DONGS,
-  bucheon: BUCHEON_DONGS,
-  incheon: INCHEON_DONGS,
-  gyeonggi: GYEONGGI_DONGS,
-  all: ALL_GYEONGIN,
-};
 
 /** 세계문학 고전 등장인물 + 한 줄 소개 */
 const LITERARY = [
@@ -90,107 +80,9 @@ const LITERARY = [
 
 const LITERARY_BY_LEN = [...LITERARY].sort((a, b) => b.name.length - a.name.length);
 
-const REGION_CACHE_KEY = 'yongseojeom.hometownRegion';
-
-function pick<T>(list: readonly T[], rand: () => number): T {
-  return list[Math.floor(rand() * list.length) % list.length]!;
-}
-
-export function randomGyeonginDong(rand: () => number = Math.random): string {
-  return pick(ALL_GYEONGIN, rand);
-}
-
-function peekRegion(): RegionId | null {
-  try {
-    const v = sessionStorage.getItem(REGION_CACHE_KEY);
-    if (v === 'seoul' || v === 'bucheon' || v === 'incheon' || v === 'gyeonggi' || v === 'all') return v;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function rememberRegion(id: RegionId): void {
-  try {
-    sessionStorage.setItem(REGION_CACHE_KEY, id);
-  } catch {
-    /* ignore */
-  }
-}
-
-/** @deprecated 예전 단일 동 캐시. 호환용으로만 둔다. */
-export function peekHometownDong(): string | null {
-  return null;
-}
-
-/** 도시·지역 → 지역 id. */
-export function regionForPlace(city: string, region: string): RegionId {
-  const c = `${city} ${region}`.toLowerCase();
-  if (/bucheon|부천/.test(c)) return 'bucheon';
-  if (/seoul|서울/.test(c)) return 'seoul';
-  if (/incheon|인천/.test(c)) return 'incheon';
-  if (
-    /gyeonggi|경기|suwon|수원|seongnam|성남|goyang|고양|yongin|용인|anyang|안양|uijeongbu|의정부|namyangju|남양주|hwaseong|화성|gwangmyeong|광명|hanam|하남|gimpo|김포|paju|파주|siheung|시흥|gunpo|군포|uiwang|의왕|guri|구리/.test(c)
-    || /수원|성남|고양|용인|안양|의정부|남양주|화성|광명|하남|김포|파주|시흥|군포|의왕|구리|과천|동두천|양주|포천|여주|이천|안성|평택|오산|광주/.test(city + region)
-  ) {
-    return 'gyeonggi';
-  }
-  return 'all';
-}
-
-/** @deprecated dongPoolForPlace → regionForPlace */
-export function dongPoolForPlace(city: string, region: string): readonly string[] {
-  return REGION_POOL[regionForPlace(city, region)];
-}
-
-/**
- * IP를 참고하되 경인 전체에서 넓게 동네를 고른다.
- * 지역 풀을 2번 섞어 살짝 가중만 주고, 대부분은 전체에서 뽑는다.
- */
-export function pickWideDong(rand: () => number = Math.random, region: RegionId | null = peekRegion()): string {
-  const local = region && region !== 'all' ? REGION_POOL[region] : null;
-  if (!local) return pick(ALL_GYEONGIN, rand);
-  // ~1/3 확률로 접속 지역, 나머지는 경인 전체
-  if (rand() < 0.34) return pick(local, rand);
-  return pick(ALL_GYEONGIN, rand);
-}
-
-async function fetchIpPlace(): Promise<{ city: string; region: string } | null> {
-  const ctrl = new AbortController();
-  const timer = window.setTimeout(() => ctrl.abort(), 2500);
-  try {
-    const res = await fetch('https://ipwho.is/', { signal: ctrl.signal });
-    if (!res.ok) return null;
-    const j = (await res.json()) as { success?: boolean; city?: string; region?: string; country_code?: string };
-    if (!j?.success || j.country_code !== 'KR') return null;
-    return { city: String(j.city ?? ''), region: String(j.region ?? '') };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-let warming: Promise<RegionId> | null = null;
-
-/**
- * IP로 지역만 캐시한다. 동네 문자열은 매번 넓게 다시 고른다.
- */
-export function warmHometownDong(rand: () => number = Math.random): Promise<string> {
-  const cached = peekRegion();
-  if (cached) return Promise.resolve(pickWideDong(rand, cached));
-  if (warming) {
-    return warming.then((r) => pickWideDong(rand, r));
-  }
-  warming = (async () => {
-    const place = await fetchIpPlace();
-    const id = place ? regionForPlace(place.city, place.region) : 'all';
-    rememberRegion(id);
-    return id;
-  })();
-  return warming.then((r) => pickWideDong(rand, r));
-}
-
+function pick<T>(list: readonly T[], rand: () => number): T { return list[Math.floor(rand()*list.length)%list.length]!; }
+export function randomGyeonginDong(rand:()=>number=Math.random): string {return pick(ALL_GYEONGIN,rand);}
+export function warmHometownDong(rand:()=>number=Math.random): Promise<string> {return Promise.resolve(randomGyeonginDong(rand));}
 export function pickLiterary(rand: () => number = Math.random): { name: string; blurb: string } {
   const c = pick(LITERARY, rand);
   return { name: c.name, blurb: c.blurb };
@@ -205,9 +97,9 @@ export function characterBlurb(nickname: string): string {
   return '세계문학 속 등장인물이에요.';
 }
 
-/** 닉네임 하나 뽑기. 동네는 IP 지역을 살짝 참고해 넓게 랜덤. */
+/** 닉네임 하나 뽑기. 동네는 실제 위치와 무관한 무작위 이름. */
 export function randomNickname(rand: () => number = Math.random, dong?: string): string {
-  const place = (dong ?? pickWideDong(rand)).trim();
+  const place = (dong ?? randomGyeonginDong(rand)).trim();
   const who = pickLiterary(rand).name;
   return `${place} ${who}`;
 }

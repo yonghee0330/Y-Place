@@ -1,7 +1,7 @@
 // 앱 조립: 장면 + 아바타 + 이동·카메라 + HUD + 함께 있기(presence) + 읽기 모드.
 import * as THREE from 'three';
 import { Ambience } from './audio/ambience';
-import { BookstoreBgm } from './audio/bgm';
+import { BookstoreBgm, hasConfiguredBgm } from './audio/bgm';
 import { Sfx } from './audio/sfx';
 import { Crowd, type Actor } from './avatar/crowd';
 import { OVERLAY_LAYER } from './avatar/nameplate';
@@ -132,7 +132,7 @@ export async function startApp(
 
   const follow = new FollowCamera(camera, SPAWN.ry + Math.PI);
   follow.reducedMotion = reducedMotion();
-  const fitLook = () => (follow.lookHeight = camera.aspect < 0.8 ? 1.25 : 0.9);
+  const fitLook = () => (follow.lookHeight = camera.aspect < 0.8 ? .85 : .8);
   fitLook();
   follow.fitToSpace(true);
   follow.follow(me.root.position, true);
@@ -160,7 +160,7 @@ export async function startApp(
   setCoverApiBase(
     params.api
     || (presenceMode === 'supabase' ? supabaseKakaoApiBase() : '')
-    || apiBaseFromWs(params.ws)
+    || (presenceMode === 'ws' ? apiBaseFromWs(params.ws) : '')
     || (import.meta.env.VITE_API_BASE as string | undefined)
     || '',
   );
@@ -181,10 +181,12 @@ export async function startApp(
   // 첫 터치에서 유튜브 API를 미리 받아 두면, 소리 켜기 직후 바로 재생을 시작할 수 있다
   addEventListener('pointerdown', () => bgm.warm(), { once: true, capture: true });
   const sfx = new Sfx(amb);
-  amb.setMusicSynth(false);
+  amb.setMusicSynth(settings.music && !hasConfiguredBgm);
   amb.setNatureLevel(0);
   function applySoundLayers(): void {
     const on = settings.sound;
+    amb.setMusicSynth(settings.music && !hasConfiguredBgm);
+    amb.setMusicVolume(settings.musicVolume);
     amb.setEnabled(on);
     amb.setNatureLevel(0);
     bgm.setVolume(settings.musicVolume);
@@ -275,17 +277,18 @@ export async function startApp(
     keyboardMove: () => {},
     music: (v) => {
       settings.music = v;
-      if (settings.sound) bgm.setEnabled(v);
+      if (settings.sound) applySoundLayers();
     },
     musicVolume: (v) => {
       settings.musicVolume = v;
       bgm.setVolume(v);
+      amb.setMusicVolume(v);
     },
   }, autoLevel, { manager: isManager });
 
   // 첫 진입 안내
   if (!settings.introDismissed && !params.cam && !params.autoread) {
-    toasts.show('창가 보드에 인사·바람·제보를 남겨 주세요', {
+    toasts.show('바닥을 눌러 걷고, 의자를 눌러 앉아 보세요', {
       duration: 8000,
       kind: 'guide',
       action: {
@@ -664,7 +667,11 @@ export async function startApp(
   }
 
   function rebuildHits(): void {
-    while (hitGroup.children.length) hitGroup.remove(hitGroup.children[0]);
+    for (const child of [...hitGroup.children]) {
+      const mesh = child as THREE.Mesh; mesh.geometry.dispose();
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) m.dispose();
+      hitGroup.remove(child);
+    }
     for (const c of colliders()) {
       const box = new THREE.Mesh(new THREE.BoxGeometry(c.x1 - c.x0, c.h, c.z1 - c.z0), new THREE.MeshBasicMaterial({ visible: false }));
       box.position.set((c.x0 + c.x1) / 2, c.h / 2, (c.z0 + c.z1) / 2);
@@ -789,7 +796,7 @@ export async function startApp(
     }
     const seats = pick.object.userData.seats as string[] | null | undefined;
     if (seats) {
-      const seat = movement.sitNear({ x: pick.point.x, z: pick.point.z }, seats) ?? movement.sitNear({ x: pick.point.x, z: pick.point.z });
+      const seat = movement.sitNear({ x: pick.point.x, z: pick.point.z }, seats);
       if (!seat) toasts.show('빈 자리가 없어요');
       else ring.show(seat.x, seat.z);
     } else {
@@ -924,6 +931,9 @@ export async function startApp(
       follow.follow(me.root.position);
       follow.update(dt);
     }
+    // 벽에 가까운 카메라에서 내 머리가 화면을 덮으면 잠시 1인칭처럼 표시한다.
+    const headDistance = Math.hypot(camera.position.x-me.root.position.x, camera.position.y-me.root.position.y-.8, camera.position.z-me.root.position.z);
+    me.root.visible = !!fixedCam || !!meCam || headDistance > (me.root.visible ? .95 : 1.1);
     crowd.update(dt, t, camera);
     if (meCam) {
       const p = me.root.position;
@@ -969,11 +979,14 @@ export async function startApp(
     peers: () => [...peers.values()].map((p) => ({ id: p.id, nickname: p.nickname, state: p.state, seatId: p.seatId, book: p.book })),
     visiblePeerAvatars: () => crowd.list('peer').filter((a) => a.root.visible && a.root.parent).map((a) => ({ id: a.id, nickname: a.nickname, nameplate: !!a.nameplate?.mesh.visible })),
     teleport: (x: number, z: number, ry = 0) => movement.place(x, z, ry),
-    cameraAt: (p: [number,number,number], t: [number,number,number], fov?: number) => { camera.position.set(...p); camera.lookAt(...t); if(fov) {camera.fov=fov;camera.updateProjectionMatrix();} },
+    cameraAt: (p: [number,number,number], t: [number,number,number], fov?: number) => { camera.position.set(...p); camera.lookAt(...t); if(fov) {camera.fov=fov;camera.updateProjectionMatrix();} camera.updateMatrixWorld(true); },
     meCam: (o: [number, number, number] | null) => { meCam = o; },
     npcCount: () => npcs.filter((n) => n.actor.root.visible).length,
     sound: () => amb.status(),
-    bgm: () => bgm.status(),
+    bgm: () => ({ ...bgm.status(), source: hasConfiguredBgm ? 'youtube' : 'synth' }),
+    switchingSpace: () => switchingSpace,
+    portals: () => PORTALS.map(p=>({...p})),
+    camera: () => ({position:camera.position.toArray(),fov:camera.fov}),
     openBoard: () => setPostitWall(true),
     weather: () => weather,
     /** 장면이 쓰는 텍스처 중 가장 큰 변의 길이(성능 예산: 1024px 이하) */
@@ -1005,7 +1018,7 @@ export async function startApp(
       return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight };
     },
     camPresets: CAM_PRESETS,
-    seats: () => SEATS.map((s) => ({ id: s.id, x: s.x, z: s.z, y: s.y })),
+    seats: () => SEATS.map((s) => ({ ...s })),
     placeAtSeat: (id: string) => {
       const s = SEATS.find((x) => x.id === id);
       if (s) {

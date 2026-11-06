@@ -24,7 +24,7 @@ export class BookSheet {
     this.sheet.el.classList.add('book-sheet');
     const b = this.sheet.body;
     b.innerHTML = `
-      <p class="sheet-text">책 제목을 적으면 목록이 나와요. 눌러서 고르면 돼요.</p>
+      <p class="sheet-text">읽고 있는 책 제목을 적어 주세요. 예시 목록에서 고르거나 적은 제목 그대로 읽을 수 있어요.</p>
       <form class="book-search-form" data-search-form>
         <label class="field-label" for="book-title">제목</label>
         <div class="book-search-row">
@@ -171,7 +171,7 @@ export class BookSheet {
   /** 검색으로 못 찾거나 실패했을 때, 적은 제목 그대로 읽을 수 있는 길. */
   private showManual(title: string): void {
     this.manualBtn.hidden = false;
-    this.manualBtn.textContent = `검색 없이 「${title.length > 24 ? `${title.slice(0, 24)}…` : title}」(으)로 읽기`;
+    this.manualBtn.textContent = `「${title.length > 24 ? `${title.slice(0, 24)}…` : title}」(으)로 읽기`;
   }
 
   private confirmManual(): void {

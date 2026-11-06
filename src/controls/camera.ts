@@ -80,7 +80,7 @@ export class FollowCamera {
 
   /** 따라갈 점 */
   follow(p: THREE.Vector3, snap = false): void {
-    this.goal.set(p.x, p.y + this.lookHeight, p.z);
+    this.goal.set(p.x * .75, p.y + this.lookHeight, p.z * .65);
     if (snap) this.target.copy(this.goal);
   }
 
@@ -136,13 +136,32 @@ export class FollowCamera {
     const wallHit = roomExit(this.target, dir, slack) - 0.22;
     const furnHit = furnitureExit(this.target, dir, this.shown.dist) - 0.42;
     const hit = Math.min(wallHit, furnHit);
-    const d = Math.min(this.shown.dist, Math.max(0.65, hit));
+    let d = Math.min(this.shown.dist, Math.max(0.65, hit));
+    // 작은 방의 벽 앞 좌석에서는 뒤로 물러설 수 없다. 빈 방향을 찾아
+    // 아바타 머리 안으로 파고드는 대신 방 안쪽에서 좌석을 바라본다.
+    if (d < 1.25 && !this.focusPose) {
+      let bestYaw = this.shown.yaw;
+      let bestPitch = this.shown.pitch;
+      const bestDir = dir.clone();
+      for (const offset of [Math.PI/3, -Math.PI/3, Math.PI/2, -Math.PI/2, Math.PI]) {
+        const yaw = this.shown.yaw + offset;
+        const pitch = Math.max(this.shown.pitch, 38 * DEG);
+        const candidate = new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch), Math.sin(pitch), Math.cos(yaw)*Math.cos(pitch));
+        const available = Math.min(this.shown.dist, roomExit(this.target,candidate,slack)-.22, furnitureExit(this.target,candidate,this.shown.dist)-.42);
+        if (available > d + .2) { d=available; bestYaw=yaw; bestPitch=pitch; bestDir.copy(candidate); }
+      }
+      if (bestYaw !== this.shown.yaw) {
+        this.yaw = this.shown.yaw = bestYaw;
+        this.pitch = this.shown.pitch = bestPitch;
+        dir.copy(bestDir);
+      }
+    }
     const orbitPos = this.target.clone().addScaledVector(dir, d);
     // 방 안에 남도록 한 번 더 클램프
     clampInsideRoom(orbitPos, 0.2);
 
     const zoomT = THREE.MathUtils.clamp((this.shown.dist - MIN_DIST) / Math.max(0.01, maxD - MIN_DIST), 0, 1);
-    const nearFov = this.cam.aspect < 0.8 ? 60 : 52;
+    const nearFov = this.cam.aspect < 0.8 ? 80 : 58;
     // 줌 아웃해도 과하게 넓어지지 않게(공간 왜곡·허공 노출 완화)
     this.cam.fov = nearFov + zoomT * 6;
     this.cam.updateProjectionMatrix();

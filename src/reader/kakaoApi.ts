@@ -28,7 +28,7 @@ export function getKakaoApiBase(): string {
 }
 
 function endpoints(): string[] {
-  const list: string[] = ['/api/kakao/search'];
+  const list: string[] = [];
   if (apiBase) {
     if (apiBase.includes('/functions/v1')) {
       list.unshift(apiBase.endsWith('kakao-search') ? apiBase : `${apiBase}/kakao-search`);
@@ -81,6 +81,11 @@ export async function searchKakaoBooks(
 ): Promise<KakaoClientResult> {
   const t = title.trim();
   if (!t) return { ok: false, error: 'empty', message: '제목을 적어 주세요.' };
+  if (!apiBase) {
+    const examples = [ ['데미안','헤르만 헤세'], ['어린 왕자','앙투안 드 생텍쥐페리'], ['노인과 바다','어니스트 헤밍웨이'], ['모비 딕','허먼 멜빌'], ['자기만의 방','버지니아 울프'] ];
+    const items: KakaoBookItem[] = examples.filter(([title])=>title.includes(t)).map(([title,author])=>({title,author,publisher:'',coverUrl:'',blurb:null,datetime:null,year:null,link:null}));
+    return {ok:true,items,item:items[0]??null};
+  }
   const q = new URLSearchParams({ title: t });
   let last: KakaoClientResult = { ok: false, error: 'upstream', message: '카카오 프록시에 연결하지 못했어요.' };
   for (const base of endpoints()) {
