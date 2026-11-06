@@ -38,3 +38,5 @@ GitHub 저장소의 Pages Source를 GitHub Actions로 설정합니다. `main` �
 - 새 패키지는 추가하지 않았습니다. 제공 사진과 이전 프로젝트 이력은 로컬 `docs/`에 보존하고 Git 공개 대상에서 제외했습니다. 런타임에는 사진 원본이 포함되지 않습니다.
 
 검증 기록은 `PROGRESS.md`, 직접 확인한 화면은 `docs/screens/REVIEW.md`에 남깁니다.
+
+현재 공개 사이트는 `pages` 브랜치의 정적 빌드를 Pages Source로 사용합니다. 기존 Git 인증에는 `workflow` 권한이 없어 소스 `main`은 로컬에만 있습니다. 향후 Actions 배포로 전환하려면 해당 권한을 가진 Git 인증으로 `main`을 푸시하고 Pages Source를 GitHub Actions로 바꿔야 합니다.

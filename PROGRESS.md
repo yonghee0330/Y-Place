@@ -40,3 +40,9 @@
 - GitHub Pages 소스는 workflow로 설정했으나, 최초 `git push -u origin main`이 GitHub에서 거절됨: 현재 Personal Access Token에 `workflow` scope가 없어 `.github/workflows/deploy.yml` 업로드 불가.
 - SSH 에이전트에도 등록된 인증이 없음. 개인 계정 Git 인증 갱신을 요청함. 공개 사이트와 Actions 성공은 아직 확인하지 못했으며 배포 완료로 보고하지 않음.
 - 로컬 소스·5단계 커밋·최종 빌드·스크린샷은 준비 완료. 인증 갱신 후 main 푸시 → Actions 성공 → 공개 주소 입장 검사 순으로 재개한다.
+
+### 2026-11-07 — 개인 GitHub Pages 공개 배포
+- 기존 토큰에 `workflow` 권한이 없어 main 푸시는 다시 거절됨. 사용자가 배포 진행을 요청하여 빌드 결과만 별도 `pages` 브랜치에 푸시하고 Pages Source를 해당 브랜치로 전환.
+- GitHub Pages 빌드 상태 `built`, https://yonghee0330.github.io/yongseojeom/ HTTP 200 확인.
+- 공개 주소의 420px Chromium에서 시작→서점 입장→모임방 전환 통과, pageerror/console error 0.
+- 소스 `main`은 로컬 커밋으로 남아 있으며 GitHub에는 아직 푸시되지 않음. Pages Actions 방식은 사용하지 못했고 현재 배포는 브랜치 기반이다.
