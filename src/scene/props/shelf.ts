@@ -5,7 +5,7 @@ import { MergeBucket, bevelBox, projectUV, trs } from '../geom';
 import { SHELF, SHELVES } from '../layout';
 
 /** 책을 꽂을 칸. matrix는 칸 왼쪽 아래(선반 윗면, 깊이 중앙) 기준 로컬→월드. */
-export interface Compartment { matrix: THREE.Matrix4; width: number; height: number; depth: number }
+export interface Compartment { matrix: THREE.Matrix4; width: number; height: number; depth: number; display?: boolean }
 
 export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
   const comps: Compartment[] = [];
@@ -16,7 +16,7 @@ export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
     const w = s.w;
     const tintK = 1 + r.range(-0.04, 0.04);
     const tintC = new THREE.Color(tintK, tintK, tintK);
-    const add = (g: THREE.BufferGeometry, grain: 'x' | 'y' | 'z', m: THREE.Matrix4, mat = 'medium', color: THREE.Color = tintC) => {
+    const add = (g: THREE.BufferGeometry, grain: 'x' | 'y' | 'z', m: THREE.Matrix4, mat = 'honey', color: THREE.Color = tintC) => {
       projectUV(g, grain, { offset: [r.float(), r.float()] });
       bucket.add(mat, g, base.clone().multiply(m), color);
     };
@@ -24,7 +24,7 @@ export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
     const topCapH = 0.035;
     const bodyH = h - topCapH;
     // 측판
-    for (const sx of [-1, 1]) add(bevelBox(b, bodyH, d, 0.004), 'y', trs(sx * (w / 2 - b / 2), bodyH / 2, 0));
+    if (!s.rail) for (const sx of [-1, 1]) add(bevelBox(b, bodyH, d, 0.004), 'y', trs(sx * (w / 2 - b / 2), bodyH / 2, 0));
     // 선반 판재: 바닥판 + 중간 4장 + 윗판
     const innerW = w - 2 * b;
     const yBottom = plinth;
@@ -42,6 +42,12 @@ export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
     add(bevelBox(w + 0.04, topCapH, d + 0.03, 0.01), 'x', trs(0, bodyH + topCapH / 2, 0.012));
     // 받침(걸레받이처럼 살짝 들어감)
     add(bevelBox(innerW, plinth, 0.02, 0.004), 'x', trs(0, plinth / 2, d / 2 - 0.03));
+    if (s.rail) {
+      for(const sx of [-1,1]) {
+        add(bevelBox(.022,h,.022,.002),'y',trs(sx*(w/2-.22),h/2,-d/2),'iron');
+        for(const y of boardYs) add(bevelBox(.018,.026,d,.003),'z',trs(sx*(w/2-.22),y-.022,0),'iron');
+      }
+    } else {
     // 뒤판: 세로 판재 여러 장(짙은 월넛)
     add(new THREE.PlaneGeometry(innerW, bodyH - plinth), 'y', trs(0, plinth + (bodyH - plinth) / 2, -d / 2 - 0.001), 'subfloor');
     const nBack = Math.max(3, Math.round(innerW / 0.2));
@@ -51,6 +57,7 @@ export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
       add(bevelBox(bw - 0.003, bodyH - plinth, 0.01, 0.002, 1), 'y', trs(-innerW / 2 + bw * (i + 0.5), plinth + (bodyH - plinth) / 2, -d / 2 + 0.005), 'walnut', new THREE.Color(k, k, k));
     }
 
+    }
     for (let i = 0; i < levels; i++) {
       const y = boardYs[i] + b;
       const height = boardYs[i + 1] - y;
@@ -59,6 +66,7 @@ export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
         width: innerW,
         height,
         depth: d - 0.02,
+        display: s.rail && i % 2 === 1,
       });
     }
   });

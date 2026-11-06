@@ -25,7 +25,7 @@ function paint(ctx: CanvasRenderingContext2D): void {
   ctx.font = '900 96px "Noto Serif KR", "Apple SD Gothic Neo", serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('카운터', TW / 2, TH / 2 + 6);
+  ctx.fillText('용서점', TW / 2, TH / 2 + 6);
 }
 
 export function buildCounterSign(): THREE.Mesh | null {
@@ -47,9 +47,9 @@ export function buildCounterSign(): THREE.Mesh | null {
   sign.name = 'counter-sign';
   // 카운터 로컬: 손님 쪽 앞면(-z)에 붙인다. 스툴(로컬 x -0.3)과 겹치지 않게 오른쪽(+x).
   const lx = 0.32;
-  const lz = -d / 2 - 0.012;
+  const lz = d / 2 + 0.04;
   const c = Math.cos(ry), s = Math.sin(ry);
-  sign.position.set(x + lx * c + lz * s, 0.8, z - lx * s + lz * c);
-  sign.rotation.y = ry + Math.PI;
+  sign.position.set(x + lx * c + lz * s, 0.65, z - lx * s + lz * c);
+  sign.rotation.y = ry;
   return sign;
 }

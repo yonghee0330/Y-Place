@@ -1,7 +1,7 @@
 // 스탠드 조명 2개, 펜던트 조명 3개. 빛 위치는 lighting.ts가 받아 쓴다.
 import * as THREE from 'three';
 import { MergeBucket, trs } from '../geom';
-import { FLOOR_LAMPS, PENDANTS, ROOM } from '../layout';
+import { FLOOR_LAMPS, PENDANTS, ROOM, ISLANDS } from '../layout';
 
 export interface LampAnchor { kind: 'floor' | 'pendant'; position: THREE.Vector3 }
 
@@ -18,7 +18,7 @@ export function buildLamps(bucket: MergeBucket): LampAnchor[] {
       new THREE.Vector2(0.115, 0.27), new THREE.Vector2(0.12, 0.265),
       new THREE.Vector2(0.2, 0.01), new THREE.Vector2(0.205, 0.0),
     ];
-    const shade = new THREE.LatheGeometry(shadeProfile, 40);
+    const shade = pleated(new THREE.LatheGeometry(shadeProfile, 96), 48, .006);
     bucket.add('lampShade', shade, at(trs(0, 1.22, 0)));
     bucket.add('brass', new THREE.TorusGeometry(0.117, 0.004, 6, 40), at(trs(0, 1.22 + 0.268, 0, Math.PI / 2)));
     bucket.add('bulb', new THREE.SphereGeometry(0.04, 16, 12), at(trs(0, 1.32, 0)));
@@ -39,9 +39,30 @@ export function buildLamps(bucket: MergeBucket): LampAnchor[] {
       prof.push(new THREE.Vector2(0.03 + Math.sin(t * Math.PI * 0.5) * 0.15, 0.11 - t * t * 0.12));
     }
     prof.push(new THREE.Vector2(0.185, -0.012));
-    bucket.add('pendantShade', new THREE.LatheGeometry(prof, 40), at(trs(0, yShade, 0)));
+    bucket.add('lampShade', pleated(new THREE.LatheGeometry(prof, 96), 24, .012), at(trs(0, yShade, 0)));
     bucket.add('bulb', new THREE.SphereGeometry(0.045, 18, 12), at(trs(0, yShade - 0.005, 0)));
     anchors.push({ kind: 'pendant', position: new THREE.Vector3(p.x, yShade - 0.03, p.z) });
   }
+  // 실제 사진처럼 중앙 매대 위에 작은 주름 스탠드.
+  for(const island of ISLANDS) {
+    const x=island.x+.3,z=island.z-.05,y=island.h;
+    bucket.add('brass',new THREE.CylinderGeometry(.085,.10,.018,24),trs(x,y+.009,z));
+    bucket.add('brass',new THREE.CylinderGeometry(.008,.008,.34,12),trs(x,y+.18,z));
+    const shade=pleated(new THREE.LatheGeometry([new THREE.Vector2(.095,.22),new THREE.Vector2(.10,.215),new THREE.Vector2(.16,0)],96),48,.004);
+    bucket.add('lampShade',shade,trs(x,y+.28,z));
+    bucket.add('bulb',new THREE.SphereGeometry(.025,12,8),trs(x,y+.35,z));
+    anchors.push({kind:'floor',position:new THREE.Vector3(x,y+.32,z)});
+  }
   return anchors;
+}
+
+function pleated(g: THREE.BufferGeometry, folds: number, depth: number): THREE.BufferGeometry {
+  const p=g.getAttribute('position');
+  for(let i=0;i<p.count;i++) {
+    const x=p.getX(i),z=p.getZ(i),r=Math.hypot(x,z);
+    if(r<.01) continue;
+    const k=(r+Math.cos(Math.atan2(x,z)*folds)*depth)/r;
+    p.setXYZ(i,x*k,p.getY(i),z*k);
+  }
+  g.computeVertexNormals();return g;
 }

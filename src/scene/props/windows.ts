@@ -17,7 +17,7 @@ export function buildWindows(bucket: MergeBucket, rng: Rng): { windows: WindowIn
     const fw = 0.06, fd = 0.07;
     const wood = (g: THREE.BufferGeometry, grain: 'x' | 'y', m: THREE.Matrix4) => {
       projectUV(g, grain, { offset: [r.float(), r.float()] });
-      bucket.add('paint', g, m);
+      bucket.add('iron', g, m);
     };
     // 바깥 틀
     wood(bevelBox(fw, h, fd, 0.006), 'y', trs(x0 + fw / 2, o.y0 + h / 2, zf));
@@ -26,7 +26,7 @@ export function buildWindows(bucket: MergeBucket, rng: Rng): { windows: WindowIn
     wood(bevelBox(o.w, fw, fd, 0.006), 'x', trs(o.cx, o.y0 + fw / 2, zf));
     // 격자 창살: 세로 2, 가로 1 → 3×2 칸
     const bar = 0.03;
-    for (const t of [1 / 3, 2 / 3]) {
+    for (const t of [1 / 2]) {
       wood(bevelBox(bar, h - 2 * fw, 0.045, 0.004), 'y', trs(x0 + o.w * t, o.y0 + h / 2, zf));
     }
     wood(bevelBox(o.w - 2 * fw, bar, 0.045, 0.004), 'x', trs(o.cx, o.y0 + fw + (h - 2 * fw) * 0.55, zf));

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Rng } from '../../core/rng';
 import { MergeBucket, bevelBox, projectUV, taperLeg, trs } from '../geom';
 import {
-  BAR_TABLE, BENCH, CHAIRS, COFFEE_TABLE, COUNTER, ISLANDS, READING_TABLE, ROUND_TABLE, SEATS, isPresent,
+  BAR_TABLE, BENCH, CHAIRS, COFFEE_TABLE, COUNTER, ISLANDS, READING_TABLE, ROUND_TABLE, SIDE_TABLE, SEATS, isPresent,
 } from '../layout';
 import { BookCollector, displayBook, stackBooks } from './books';
 
@@ -29,26 +29,15 @@ export function buildIslands(bucket: MergeBucket, rng: Rng, books: BookCollector
     const { x, z, ry, w, d, h, kind } = isl;
     const base = trs(x, 0, z, 0, ry);
     const at = (m: THREE.Matrix4) => base.clone().multiply(m);
-    woodPart(bucket, r, 'walnut', bevelBox(w - 0.1, 0.08, d - 0.1, 0.01), 'x', at(trs(0, 0.04, 0)));
-    const bodyH = h - 0.08 - 0.04;
-    if (kind === 'flat') {
-      const nSlat = Math.max(10, Math.round(w * 9));
-      for (const side of [-1, 1]) {
-        for (let i = 0; i < nSlat; i++) {
-          const sw = (w - 0.06) / nSlat;
-          woodPart(bucket, r, 'honey', bevelBox(sw - 0.004, bodyH, 0.018, 0.003, 1), 'y',
-            at(trs(-w / 2 + 0.03 + sw * (i + 0.5), 0.08 + bodyH / 2, side * (d / 2 - 0.04))), 1 + r.range(-0.05, 0.05));
-        }
-      }
-      for (const side of [-1, 1]) {
-        woodPart(bucket, r, 'honey', bevelBox(0.02, bodyH, d - 0.08, 0.004), 'y', at(trs(side * (w / 2 - 0.04), 0.08 + bodyH / 2, 0)));
-      }
-      woodPart(bucket, r, 'honey', bevelBox(w, 0.04, d, 0.012, 3), 'x', at(trs(0, h - 0.02, 0)));
-    } else {
-      // 입식 매대: 좁고 높은 몸통 + 상단 선반
-      woodPart(bucket, r, 'honey', bevelBox(w - 0.08, bodyH, d - 0.08, 0.008), 'y', at(trs(0, 0.08 + bodyH / 2, 0)));
-      woodPart(bucket, r, 'honey', bevelBox(w + 0.04, 0.035, d + 0.04, 0.01, 2), 'x', at(trs(0, h - 0.02, 0)));
-      woodPart(bucket, r, 'honey', bevelBox(w - 0.05, 0.025, d - 0.12, 0.006), 'x', at(trs(0, h * 0.55, 0.02)));
+    woodPart(bucket,r,'honey',bevelBox(w,.035,d,.009,3),'x',at(trs(0,h-.0175,0)));
+    woodPart(bucket,r,'honey',bevelBox(w-.08,.022,d-.08,.005),'x',at(trs(0,.14,0)));
+    for(const sx of [-1,1]) for(const sz of [-1,1]) {
+      bucket.add('iron',taperLeg(h-.035,.025,.021),at(trs(sx*(w/2-.035),0,sz*(d/2-.035))));
+    }
+    for(const sz of [-1,1]) bucket.add('iron',bevelBox(w-.04,.035,.025,.003),at(trs(0,h-.055,sz*(d/2-.035))));
+    for(let i=0;i<5;i++) {
+      stackBooks(at(trs(-w/2+.12+i*.27,.155,0,0,r.range(-.1,.1))),r,books,r.int(3,5));
+      displayBook(at(trs(-w/2+.15+i*.29,h,-.14,0,r.range(-.12,.12))),r,books,bucket);
     }
     const top = h;
     stackBooks(at(trs(-w * 0.25, top, 0.1, 0, 0.1)), r, books, kind === 'flat' ? 5 : 3);
@@ -265,8 +254,8 @@ export function buildCounter(bucket: MergeBucket, rng: Rng, books: BookCollector
 export function buildBench(bucket: MergeBucket, rng: Rng, books: BookCollector): void {
   if (!isPresent(BENCH) || BENCH.w < 0.1) return;
   const r = rng.fork('bench');
-  const { x, z, w, d, h } = BENCH;
-  const at = (m: THREE.Matrix4) => trs(x, 0, z).multiply(m);
+  const { x, z, ry, w, d, h } = BENCH;
+  const at = (m: THREE.Matrix4) => trs(x, 0, z, 0, ry).multiply(m);
   const topT = 0.035;
   woodPart(bucket, r, 'honey', bevelBox(w, topT, d, 0.01, 3), 'x', at(trs(0, h - topT / 2, 0)));
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
@@ -278,7 +267,7 @@ export function buildBench(bucket: MergeBucket, rng: Rng, books: BookCollector):
     const cushion = projectUV(bevelBox(w / 2 - 0.04, 0.06, d - 0.04, 0.025, 4), 'x', { along: 0.3, across: 0.3, offset: [r.float(), r.float()] });
     bucket.add('benchCushion', cushion, at(trs(sx * (w / 4), h + 0.03, 0, 0, r.range(-0.03, 0.03))), new THREE.Color(1, 1, 1).multiplyScalar(1 + r.range(-0.04, 0.04)));
   }
-  stackBooks(at(trs(0.42, h + 0.06, -0.06, 0, 0.4)), r, books, 2);
+  void books;
 }
 
 /** 소파 앞 낮은 테이블: 둥근 모서리 상판 + 아래 선반 + 다리, 위에 책·찻잔. */
@@ -330,4 +319,16 @@ export function buildRoundTable(bucket: MergeBucket, rng: Rng, books: BookCollec
     bucket.add('ceramic',new THREE.SphereGeometry(.023,12,8),at(trs(.12+(i-1)*.04,h+.34,-.12)),0xe5ccb0);
   }
   CHAIRS.forEach((c,i)=>buildChairAt(bucket,random.fork(`circle-${i}`),trs(c.x,0,c.z,0,c.ry)));
+}
+
+export function buildSideTable(bucket: MergeBucket, rng: Rng, books: BookCollector): void {
+  if (!isPresent(SIDE_TABLE)) return;
+  const {x,z,r,h}=SIDE_TABLE, random=rng.fork('side-table');
+  const at=(m:THREE.Matrix4)=>trs(x,0,z).multiply(m);
+  woodPart(bucket,random,'honey',new THREE.CylinderGeometry(r-.006,r,.026,48),'x',at(trs(0,h-.013,0)));
+  for(let i=0;i<3;i++) {
+    const a=i*Math.PI*2/3;
+    woodPart(bucket,random,'walnut',taperLeg(h-.026,.025,.018),'y',at(trs(Math.sin(a)*r*.7,0,Math.cos(a)*r*.7)));
+  }
+  stackBooks(at(trs(-.09,h,0,0,.2)),random,books,1);
 }

@@ -134,6 +134,7 @@ export async function startApp(
   follow.reducedMotion = reducedMotion();
   const fitLook = () => (follow.lookHeight = camera.aspect < 0.8 ? 1.25 : 0.9);
   fitLook();
+  follow.fitToSpace(true);
   follow.follow(me.root.position, true);
   const fixedCam = params.cam && params.cam !== 'avatar' ? params.cam : null;
   if (fixedCam) applyPreset(camera, fixedCam);
@@ -968,6 +969,7 @@ export async function startApp(
     peers: () => [...peers.values()].map((p) => ({ id: p.id, nickname: p.nickname, state: p.state, seatId: p.seatId, book: p.book })),
     visiblePeerAvatars: () => crowd.list('peer').filter((a) => a.root.visible && a.root.parent).map((a) => ({ id: a.id, nickname: a.nickname, nameplate: !!a.nameplate?.mesh.visible })),
     teleport: (x: number, z: number, ry = 0) => movement.place(x, z, ry),
+    cameraAt: (p: [number,number,number], t: [number,number,number], fov?: number) => { camera.position.set(...p); camera.lookAt(...t); if(fov) {camera.fov=fov;camera.updateProjectionMatrix();} },
     meCam: (o: [number, number, number] | null) => { meCam = o; },
     npcCount: () => npcs.filter((n) => n.actor.root.visible).length,
     sound: () => amb.status(),

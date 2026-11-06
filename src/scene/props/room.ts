@@ -153,6 +153,6 @@ export function buildCeiling(bucket: MergeBucket, rng: Rng): void {
   for (const x of xs) {
     const beam = bevelBox(0.14, 0.17, ROOM.d, 0.01, 2);
     projectUV(beam, 'z', { along: 1.2, across: 0.5, offset: [r.float(), r.float()] });
-    bucket.add('walnut', beam, trs(x, ROOM.h - 0.085, 0));
+    bucket.add('paint', beam, trs(x, ROOM.h - 0.085, 0));
   }
 }

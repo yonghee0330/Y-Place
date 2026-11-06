@@ -6,7 +6,7 @@ import { MergeBucket, bevelBox, trs } from '../geom';
 import type { Compartment } from './shelf';
 
 export const BOOK_PALETTE = [
-  '#8c2f2a', '#b5562f', '#c99a3d', '#3f5f4a', '#2d4a5e', '#6b3a4f',
+  '#e3ddce', '#eee5d8', '#d4ccbc', '#ddd8cb', '#2d4a5e', '#6b3a4f',
   '#d9cfb8', '#2a2926', '#7a8a5a', '#9fb3bd', '#5a3d2b', '#e2b49a',
 ];
 
@@ -92,7 +92,7 @@ export function fillCompartment(comp: Compartment, r: Rng, books: BookCollector,
   let x = r.range(0, 0.03);
   let series: { left: number; color: string; h: number; t: number; variant: number } | null = null;
   // 칸마다 성격: 꽉 참 / 보통 / 듬성
-  const density = r.pick([0.04, 0.09, 0.16]);
+  const density = r.pick([0.02, 0.04, 0.06]);
   let placed = 0;
 
   while (x < comp.width - 0.012) {
@@ -152,7 +152,7 @@ export function fillCompartment(comp: Compartment, r: Rng, books: BookCollector,
       x += foot + r.range(0.0, 0.01);
       placed++;
       // 기운 책 뒤는 대개 비워 둔다
-      if (r.chance(0.6)) break;
+      if (r.chance(0.2)) x += 0.02;
       continue;
     }
 

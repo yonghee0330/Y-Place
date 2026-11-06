@@ -20,9 +20,9 @@ export function createMaterials(rng: Rng): Materials {
 
   const sofaFabric = tex.fabricTexture(rng.fork('sofa'), '#5d6b4e');
   const blanket = tex.fabricTexture(rng.fork('blanket'), '#d8c7a4');
-  const chairCushion = tex.fabricTexture(rng.fork('cushion'), '#a4553a');
+  const chairCushion = tex.fabricTexture(rng.fork('cushion'), '#78806a');
   const benchCushion = tex.fabricTexture(rng.fork('bench'), '#c7b38c');
-  const wingbackFabric = tex.fabricTexture(rng.fork('wingback'), '#8a8e93');
+  const wingbackFabric = tex.fabricTexture(rng.fork('wingback'), '#75806b');
 
   return {
     honey: wood(honey, 0.95),
@@ -32,7 +32,7 @@ export function createMaterials(rng: Rng): Materials {
     subfloor: new THREE.MeshStandardMaterial({ color: 0x1e140c, roughness: 1 }),
     plaster: new THREE.MeshStandardMaterial({ map: plaster, roughness: 0.92, vertexColors: true }),
     ceiling: new THREE.MeshStandardMaterial({ map: plaster, color: 0xf3ead9, roughness: 0.95 }),
-    paint: std({ color: 0xece2cc, roughness: 0.55 }),
+    paint: std({ color: 0xe8e3da, roughness: 0.55 }),
     brass: std({ color: 0x9a7440, metalness: 0.85, roughness: 0.38 }),
     iron: std({ color: 0x2b2a26, metalness: 0.6, roughness: 0.5 }),
     pendantShade: std({ color: 0x2f3b30, metalness: 0.35, roughness: 0.45, side: THREE.DoubleSide }),

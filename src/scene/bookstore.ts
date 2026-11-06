@@ -6,19 +6,20 @@ import type { LoadingScreen } from '../ui/loading';
 import { buildExterior, type Exterior } from './exterior';
 import { MergeBucket, trs } from './geom';
 import {
-  COUNTER, FLOOR_PLANTS, SPACE_ORDER, applyLayout, type Placement, type SpaceId,
+  ARMCHAIRS, COUNTER, FLOOR_PLANTS, SPACE_ORDER, applyLayout, type Placement, type SpaceId,
 } from './layout';
 import { buildLighting, type Lighting } from './lighting';
 import { hasModel, loadOrFallback } from './loadOrFallback';
 import { createMaterials } from './materials';
-import { BookCollector, fillCompartment, stackBooks } from './props/books';
+import { BookCollector, displayBook, fillCompartment, stackBooks } from './props/books';
 import { buildContactShadows } from './props/contactShadows';
 import {
-  buildBarTable, buildBench, buildCoffeeTable, buildCounter, buildCounterStool, buildIslands, buildReadingTable, buildRoundTable,
+  buildBarTable, buildBench, buildCoffeeTable, buildCounter, buildCounterStool, buildIslands, buildReadingTable, buildRoundTable, buildSideTable,
 } from './props/furniture';
 import { buildLamps } from './props/lamps';
 import { buildPlant } from './props/plants';
 import { buildEventBoard, type EventBoardProp } from './props/eventBoard';
+import { buildIdentity } from './props/identity';
 import { buildCounterSign } from './props/counterSign';
 import { buildPortalGlow, buildPortals, type PortalGlow } from './props/portals';
 import { buildCeiling, buildFloor, buildWalls } from './props/room';
@@ -26,7 +27,7 @@ import { buildShelves } from './props/shelf';
 import { buildRug, buildSofa } from './props/sofa';
 import { buildWallDecor } from './props/wallDecor';
 import { buildWindows } from './props/windows';
-import { buildPartitions } from './props/zones';
+import { buildPartitions, buildWingbackArmchair } from './props/zones';
 import { buildWindowRain, type WindowRain } from './windowRain';
 
 export interface SpaceView {
@@ -80,7 +81,9 @@ function buildOneSpace(
   const comps = buildShelves(bucket, rng.fork(`${id}-shelf`));
   const br = rng.fork(`${id}-books`);
   comps.forEach((c, i) => {
-    fillCompartment(c, br.fork(`c${i}`), books, bucket);
+    if(c.display) {
+      for(let j=0;j<Math.floor(c.width/.25);j++) displayBook(c.matrix.clone().multiply(trs(.12+j*.25,0,.015,0,0)),br.fork(`display-${i}-${j}`),books,bucket);
+    } else fillCompartment(c, br.fork(`c${i}`), books, bucket);
   });
   windows.forEach((w, i) => {
     const r = rng.fork(`${id}-sill-${i}`);
@@ -91,6 +94,8 @@ function buildOneSpace(
   buildIslands(bucket, rng, books);
   buildReadingTable(bucket, rng, books);
   buildRoundTable(bucket, rng, books);
+  buildSideTable(bucket, rng, books);
+  ARMCHAIRS.forEach((c,i)=>buildWingbackArmchair(bucket,rng.fork(`armchair-${i}`),trs(c.x,0,c.z,0,c.ry)));
   buildBarTable(bucket, rng, books);
   if (!(id === 'shop' && hasModel('counter'))) buildCounter(bucket, rng, books);
   if (id === 'shop') buildCounterStool(bucket, rng);
@@ -110,6 +115,7 @@ function buildOneSpace(
   group.add(bucket.build(mats, { castShadow: (n) => !NO_SHADOW.has(n) }));
   group.add(books.build(mats.bookCover as THREE.MeshStandardMaterial, mats.bookPages));
   group.add(portalGlow.group);
+  group.add(buildIdentity());
   if (eventBoard) group.add(eventBoard.group);
   const counterSign = id === 'shop' ? buildCounterSign() : null;
   if (counterSign) group.add(counterSign);

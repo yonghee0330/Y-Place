@@ -65,11 +65,11 @@ const clamp255 = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v);
 
 export type WoodKind = 'honey' | 'medium' | 'walnut' | 'oak';
 const WOOD: Record<WoodKind, { light: string; dark: string; ring: number; warp: number }> = {
-  honey: { light: '#d2a774', dark: '#a0754a', ring: 0.55, warp: 1.6 },
-  medium: { light: '#9e7550', dark: '#5f4029', ring: 0.6, warp: 1.6 },
-  walnut: { light: '#6a4a33', dark: '#38261a', ring: 0.7, warp: 1.8 },
+  honey: { light: '#cdb18b', dark: '#b29471', ring: 0.30, warp: 0.45 },
+  medium: { light: '#b08b63', dark: '#92704e', ring: 0.35, warp: 0.6 },
+  walnut: { light: '#78604b', dark: '#634c39', ring: 0.32, warp: 0.6 },
   // 마루: 결이 곧고 차분한 오크
-  oak: { light: '#c3a07c', dark: '#8a684c', ring: 0.45, warp: 0.9 },
+  oak: { light: '#b8a58d', dark: '#a59177', ring: 0.3, warp: 0.35 },
 };
 
 /**
@@ -181,7 +181,7 @@ export function fabricTexture(rng: Rng, base: string, size = 256): THREE.CanvasT
 
 export function rugTexture(rng: Rng, w = 1024, h = 640): THREE.CanvasTexture {
   const [c, ctx] = canvas(w, h);
-  const field = '#7d3b2c', border = '#2f3a2e', accent = '#d9b47a', inner = '#a5573c';
+  const field = '#aa9377', border = '#657263', accent = '#d9c7a6', inner = '#b6a187';
   ctx.fillStyle = border;
   ctx.fillRect(0, 0, w, h);
   const b = 70;
