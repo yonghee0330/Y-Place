@@ -25,7 +25,7 @@ test('폭 420px: 시작→입장→앉기→책 고르기→소리 켜기',async
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto('/?npc=0&quality=low&presence=local&weather=clear');
  await page.screenshot({animations:'disabled',path:'docs/screens/05-mobile-start.png'});
- await page.getByRole('button',{name:'책방 입장하기',exact:true}).tap();await ready(page);
+ await page.getByRole('button',{name:'Y-Place 입장하기',exact:true}).tap();await ready(page);
  await page.screenshot({animations:'disabled',path:'docs/screens/05-mobile-shop.png'});
  await page.getByRole('button',{name:'앉기 (단축키 4)',exact:true}).tap();
  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().state)).toBe('sit');

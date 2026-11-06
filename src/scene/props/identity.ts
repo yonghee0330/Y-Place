@@ -18,11 +18,11 @@ export function buildIdentity(): THREE.Group {
     c.strokeStyle='rgba(80,56,30,.09)';c.lineWidth=1;
     for(let i=0;i<120;i++){c.beginPath();c.moveTo(0,i*7);c.bezierCurveTo(200,i*7+5,500,i*7-3,768,i*7+3);c.stroke();}
     c.fillStyle='#382e24';c.font='500 66px "Noto Serif KR",serif';
-    c.fillText(shop?'역곡동':'작은',58,128);c.fillText(shop?'용서점':'모임방',58,225);
+    c.fillText(shop?'Y-Place':'작은',58,128);if(!shop)c.fillText('모임방',58,225);
     c.strokeStyle='#544436';c.lineWidth=2;c.beginPath();c.moveTo(58,570);c.lineTo(710,275);c.stroke();
     c.font='500 35px "Noto Serif KR",serif';
-    c.fillText(shop?'큐레이팅':'다섯 자리,',430,615);c.fillText(shop?'동네책방':'함께 읽는 시간',shop?430:360,672);
-    c.font='20px serif';c.fillText('YONGSEOJEOM · 2018',58,720);
+    c.fillText(shop?'나의 책 공간':'다섯 자리,',shop?360:430,615);c.fillText(shop?'함께 머무는 곳':'함께 읽는 시간',360,672);
+    c.font='20px serif';c.fillText('Y-PLACE',58,720);
   });
   const w=shop?.7:.7,h=shop?.82:.78;
   const board=new THREE.Mesh(bevelBox(w+.025,h+.025,.03,.006),new THREE.MeshStandardMaterial({color:0xb08c60,roughness:.9}));

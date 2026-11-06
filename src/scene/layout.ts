@@ -1,5 +1,5 @@
 import { Rng } from '../core/rng';
-// 용서점과 작은 모임방. 가구·이동·클릭이 공유하는 공간 데이터.
+// Y-Place과 작은 모임방. 가구·이동·클릭이 공유하는 공간 데이터.
 // x: 왼쪽(-)→오른쪽(+), z: 뒤 창벽(-)→앞 입구(+). 단위 m, 바닥 y=0.
 // 빌드·전환 시 applyLayout()으로 활성 공간 상수를 맞춘다.
 
@@ -21,8 +21,6 @@ export interface Collider {
   x0: number; x1: number; z0: number; z1: number; h: number;
   seatable: boolean;
   seats?: string[];
-  /** 클릭 시 포스트잇 보드 열기 */
-  eventBoard?: boolean;
 }
 export interface PortalDef {
   /** 이 문으로 연결되는 공간 */
@@ -62,8 +60,6 @@ export interface SpaceLayout {
   bench: (Placement & { w: number; d: number; h: number }) | null;
   /** 창가 바테이블(높은 테이블) */
   barTable: (Placement & { w: number; d: number; h: number }) | null;
-  /** 용서점 방명록 보드 */
-  eventBoard: { x: number; z: number; ry: number; w: number; h: number } | null;
   counter: (Placement & { w: number; d: number; h: number }) | null;
   floorLamps: Placement[];
   pendants: { x: number; z: number; drop: number }[];
@@ -87,7 +83,7 @@ function emptyBase(id: SpaceId, label: string, room: RoomBounds): Omit<SpaceLayo
   return {
     id, label, room,
     partitions: [],
-    sofa: null, coffeeTable: null, rug: null, bench: null, barTable: null, eventBoard: null, counter: null,
+    sofa: null, coffeeTable: null, rug: null, bench: null, barTable: null, counter: null,
     armchairs: [], sideTable: null, roundTable: null, readingTable: null, storeTable: null, storeChairs: [],
   };
 }
@@ -95,7 +91,7 @@ function emptyBase(id: SpaceId, label: string, room: RoomBounds): Omit<SpaceLayo
 function makeShop(): SpaceLayout {
   const spawn = { x: 0.1, z: 1.6, ry: Math.PI };
   const armchairs = [{ x: -1.25, z: -1.48, ry: .18 }, { x: .12, z: -1.48, ry: -.25 }];
-  return { ...emptyBase('shop', '용서점', roomOf(5.5, 4.5, 2.8)),
+  return { ...emptyBase('shop', 'Y-Place', roomOf(5.5, 4.5, 2.8)),
     openings: [{ cx: -.85, w: 2.75, y0: .65, y1: 2.45, kind: 'window' }],
     shelves: [
       {x:-2.54,z:-.95,ry:Math.PI/2,w:1.65,wing:'A'},
@@ -110,7 +106,6 @@ function makeShop(): SpaceLayout {
     floorLamps: [{x:-1.95,z:-1.85,ry:0}],
     floorPlants: [{x:.65,z:-2,scale:.75},{x:2.32,z:1.16,scale:.7}],
     pendants: [{x:-.25,z:.05,drop:.65},{x:1.5,z:1.4,drop:.55}],
-    eventBoard: {x:2.64,z:.95,ry:-Math.PI/2,w:.5,h:.48},
     seats: [
       ...armchairs.map((c,i)=>({...c,id:`read-${i+1}`,y:.43,approach:1 as const,from:{x:c.x,z:-.85}})),
       {id:'counter-1',x:1.68,z:1.05,ry:0,y:.72,approach:-1},
@@ -140,7 +135,7 @@ function makeCircle(): SpaceLayout {
     floorLamps: [], floorPlants: [{x: -1.7, z: -0.7, scale: 0.8}],
     pendants: [{ x: 0, z: 0, drop: 0.65 }],
     spawn, spawns: [spawn, { x: 1.5, z: 1.5, ry: Math.PI }],
-    portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: '용서점' }],
+    portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: 'Y-Place' }],
   };
 }
 export const SPACE_LAYOUTS: Record<SpaceId, SpaceLayout> = { shop: makeShop(), circle: makeCircle() };
@@ -197,7 +192,6 @@ export function applyLayout(id: SpaceId): SpaceLayout {
   assignOrClear(RUG, L.rug);
   assignOrClear(BENCH, L.bench);
   assignOrClear(BAR_TABLE, L.barTable);
-  assignOrClear(EVENT_BOARD, L.eventBoard);
   assignOrClear(COUNTER, L.counter);
   PORTALS.splice(0, PORTALS.length, ...L.portals);
   return L;
@@ -247,9 +241,6 @@ export const COFFEE_TABLE: Placement & { w: number; d: number; h: number } = { .
 export const RUG = { ...HUB.rug! };
 export const BENCH: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
 export const BAR_TABLE: Placement & { w: number; d: number; h: number } = { ...(HUB.barTable!) };
-export const EVENT_BOARD: { x: number; z: number; ry: number; w: number; h: number } = {
-  ...(HUB.eventBoard!),
-};
 export const COUNTER: Placement & { w: number; d: number; h: number } = { ...(HUB.counter!) };
 export const FLOOR_LAMPS: Placement[] = [...HUB.floorLamps];
 export const PENDANTS: { x: number; z: number; drop: number }[] = [...HUB.pendants];
@@ -271,7 +262,6 @@ export function colliders(): Collider[] {
   const rect = (
     cx: number, cz: number, w: number, d: number, ry: number, h: number,
     seats?: string[],
-    flags?: { eventBoard?: boolean },
   ) => {
     if (w <= 0.01 || d <= 0.01) return;
     const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry));
@@ -279,7 +269,6 @@ export function colliders(): Collider[] {
     list.push({
       x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd, h,
       seatable: !!seats, seats,
-      eventBoard: flags?.eventBoard,
     });
   };
   for (const s of SHELVES) rect(s.x, s.z, s.w, SHELF.d, s.ry, SHELF.h);
@@ -325,10 +314,6 @@ export function colliders(): Collider[] {
     for (const s of SEATS.filter((seat) => seat.id.startsWith('bar-') || seat.id.startsWith('counter-'))) {
       rect(s.x, s.z, 0.4, 0.4, 0, 0.95, [s.id]);
     }
-  }
-  if (isPresent(EVENT_BOARD)) {
-    // 클릭으로 포스트잇 UI를 열 수 있게 표시(걷기는 막고, 클릭은 보드로 처리)
-    rect(EVENT_BOARD.x, EVENT_BOARD.z, EVENT_BOARD.w, 0.28, EVENT_BOARD.ry, EVENT_BOARD.h + 1.0, undefined, { eventBoard: true });
   }
   if (isPresent(SIDE_TABLE)) rect(SIDE_TABLE.x,SIDE_TABLE.z,SIDE_TABLE.r*2,SIDE_TABLE.r*2,0,SIDE_TABLE.h);
   if (isPresent(COFFEE_TABLE)) rect(COFFEE_TABLE.x, COFFEE_TABLE.z, COFFEE_TABLE.w, COFFEE_TABLE.d, COFFEE_TABLE.ry, COFFEE_TABLE.h);

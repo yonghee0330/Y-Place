@@ -307,12 +307,12 @@ export function signTexture(): THREE.CanvasTexture {
   ctx.textBaseline = 'middle';
   ctx.font = '700 190px "Noto Serif KR", serif';
   ctx.fillStyle = 'rgba(36,37,31,0.35)';
-  ctx.save(); ctx.translate(514, 170); ctx.rotate(-0.025); ctx.fillText('용서점', 0, 0); ctx.restore();
+  ctx.save(); ctx.translate(514, 170); ctx.rotate(-0.025); ctx.fillText('Y-Place', 0, 0); ctx.restore();
   ctx.fillStyle = '#24251f';
-  ctx.save(); ctx.translate(510, 166); ctx.rotate(-0.02); ctx.fillText('용서점', 0, 0); ctx.restore();
+  ctx.save(); ctx.translate(510, 166); ctx.rotate(-0.02); ctx.fillText('Y-Place', 0, 0); ctx.restore();
   ctx.font = '500 44px "Noto Serif KR", serif';
   ctx.fillStyle = '#8a5a2b';
-  ctx.fillText('원미동 동네 서점 · since 2019', 512, 318);
+  ctx.fillText('MY WORKSPACE · Y-PLACE', 512, 318);
   // 붓 자국 밑줄
   ctx.strokeStyle = '#c08a4e';
   ctx.lineWidth = 10;

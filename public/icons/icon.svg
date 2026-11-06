@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- 용서점 아이콘: 짙은 녹색 바탕, 따뜻한 전구 빛, 펼친 책, 빗줄기. 가장자리 여백을 둬 마스커블로도 쓴다. -->
+  <!-- Y-Place 아이콘: 짙은 녹색 바탕, 따뜻한 전구 빛, 펼친 책, 빗줄기. 가장자리 여백을 둬 마스커블로도 쓴다. -->
   <defs>
     <radialGradient id="glow" cx="50%" cy="34%" r="52%">
       <stop offset="0" stop-color="#ffcf8a" stop-opacity="0.55"/>

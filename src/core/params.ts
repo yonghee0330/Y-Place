@@ -28,7 +28,7 @@ export interface Params {
 export const DEFAULT_SEED = 86;
 
 /** 입장 장소는 한 곳. 번호로 방을 나누지 않는다. */
-export const ROOM_NAME = '역곡동 용서점';
+export const ROOM_NAME = 'Y-Place';
 
 /** 서점 중앙(허브) 기본 정원. NPC는 세지 않는다. */
 export const ROOM_CAPACITY = 8;
@@ -101,6 +101,6 @@ export function apiBaseFromWs(ws: string): string {
 
 /** 입장 장소의 화면 표기. 방 번호는 붙이지 않는다. */
 export function roomLabel(): string {
-  // 화면에 보이는 이름. ROOM_NAME(역곡동 용서점)은 접속 채널 이름이라 바꾸지 않는다.
-  return '용서점';
+  // 화면에 보이는 이름. ROOM_NAME(Y-Place)은 접속 채널 이름이라 바꾸지 않는다.
+  return 'Y-Place';
 }

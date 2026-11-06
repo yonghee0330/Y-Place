@@ -20,7 +20,7 @@ const SHOE = new THREE.Color('#2a211c');
 const GOLD = new THREE.Color('#c4a46a');
 const MOLE = new THREE.Color('#5a3a28');
 
-/** 용서점 운영자의 옷 색(먼지 낀 핑크 티셔츠). 매니저는 look.color 대신 이 색을 쓴다. */
+/** Y-Place 운영자의 옷 색(먼지 낀 핑크 티셔츠). 매니저는 look.color 대신 이 색을 쓴다. */
 export const MANAGER_COLOR = '#d6b0ab';
 
 /** 모든 아바타가 같이 쓰는 재질(색은 정점 색). */
@@ -94,7 +94,7 @@ function headGeometry(hair: HairStyle): THREE.BufferGeometry {
     const fringe = new THREE.SphereGeometry(0.234, 24, 6, Math.PI * 0.1, Math.PI * 0.8, Math.PI * 0.18, Math.PI * 0.12);
     parts.push(paint(fringe, hc));
   } else if (hair === 'curtain') {
-    // 용서점 운영자: 숱 많은 검은 머리에 흰머리가 섞인 커튼 헤어.
+    // Y-Place 운영자: 숱 많은 검은 머리에 흰머리가 섞인 커튼 헤어.
     // 정수리는 이마 위까지만, 앞머리 띠가 눈썹 바로 위까지 내려오고, 옆머리는 귀 윗부분을 덮는다.
     parts.push(top(Math.PI * 0.36, 0.08, 0.228));
     parts.push(paint(hairShell(0.23, Math.PI * 0.7, Math.PI * 0.66), hc));
@@ -437,7 +437,7 @@ function heldBookGeometry(cover: THREE.Color): THREE.BufferGeometry {
 export interface AvatarLook {
   color: string;
   hair: HairStyle;
-  /** 용서점 운영자 전용 외형(안경·수염·목수 앞치마 등) */
+  /** Y-Place 운영자 전용 외형(안경·수염·목수 앞치마 등) */
   manager?: boolean;
 }
 

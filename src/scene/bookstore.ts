@@ -17,9 +17,7 @@ import {
 } from './props/furniture';
 import { buildLamps } from './props/lamps';
 import { buildPlant } from './props/plants';
-import { buildEventBoard, type EventBoardProp } from './props/eventBoard';
 import { buildIdentity } from './props/identity';
-import { buildCounterSign } from './props/counterSign';
 import { buildPortalGlow, buildPortals, type PortalGlow } from './props/portals';
 import { buildCeiling, buildFloor, buildWalls } from './props/room';
 import { buildShelves } from './props/shelf';
@@ -34,7 +32,6 @@ export interface SpaceView {
   group: THREE.Group;
   floor: THREE.Object3D;
   portalGlow: PortalGlow;
-  eventBoard: EventBoardProp | null;
 }
 
 export interface Bookstore {
@@ -45,7 +42,6 @@ export interface Bookstore {
   floor: THREE.Object3D;
   spaces: Record<SpaceId, SpaceView>;
   activeSpace: SpaceId;
-  eventBoard: EventBoardProp | null;
   setActiveSpace: (id: SpaceId) => void;
   updatePortals: (t: number, viewer?: { x: number; z: number; ry: number; space: SpaceId }) => void;
   stats: { books: number; planks: number };
@@ -65,7 +61,6 @@ function buildOneSpace(
   const group = new THREE.Group();
   group.name = `space:${id}`;
   const portalGlow = buildPortalGlow();
-  const eventBoard = id === 'shop' ? buildEventBoard(bucket) : null;
 
   const planks = buildFloor(bucket, rng.fork(`${id}-floor`));
   buildWalls(bucket, rng.fork(`${id}-walls`));
@@ -115,13 +110,10 @@ function buildOneSpace(
   group.add(books.build(mats.bookCover as THREE.MeshStandardMaterial, mats.bookPages));
   group.add(portalGlow.group);
   group.add(buildIdentity());
-  if (eventBoard) group.add(eventBoard.group);
-  const counterSign = id === 'shop' ? buildCounterSign() : null;
-  if (counterSign) group.add(counterSign);
   const floor = group.getObjectByName('merged:floor')!;
   floor.name = `merged:floor:${id}`;
   return {
-    view: { id, group, floor, portalGlow, eventBoard },
+    view: { id, group, floor, portalGlow },
     books: books.items.length,
     planks,
     lamps,
@@ -194,7 +186,6 @@ export async function buildBookstore(
     floor: spaces.shop.floor,
     spaces,
     activeSpace,
-    eventBoard: spaces.shop.eventBoard,
     setActiveSpace,
     updatePortals: (t: number, viewer?: { x: number; z: number; ry: number; space: SpaceId }) =>
       spaces[activeSpace]?.portalGlow.update(t, viewer),

@@ -46,3 +46,8 @@
 - GitHub Pages 빌드 상태 `built`, https://yonghee0330.github.io/yongseojeom/ HTTP 200 확인.
 - 공개 주소의 420px Chromium에서 시작→서점 입장→모임방 전환 통과, pageerror/console error 0.
 - 소스 `main`은 로컬 커밋으로 남아 있으며 GitHub에는 아직 푸시되지 않음. Pages Actions 방식은 사용하지 못했고 현재 배포는 브랜치 기반이다.
+
+### 2026-11-07 — Y-Place로 이름 변경
+- 화면 제목·입장 버튼·상단 방 이름·문 이름판·벽 간판·운영자 표기·웹 앱 이름을 Y-Place로 변경.
+- 카운터 앞 글씨판과 게시판의 모델·저장소·UI·클릭 동작 제거. 기존 책 선택·좌석·두 방 이동 유지.
+- typecheck/build 및 e2e 5/5 통과. 06-y-place-entry/sign 화면을 직접 확인하고 콘솔 오류 0.

@@ -33,9 +33,9 @@ export function weatherCopy(kind: WeatherKind): string {
 }
 
 export function weatherAria(kind: WeatherKind): string {
-  if (kind === 'rain') return '비 오는 오후의 작은 동네 서점 용서점 실내. 벽마다 책이 꽂힌 나무 서가, 창가 독서 테이블, 소파와 스탠드 조명이 있다.';
-  if (kind === 'snow') return '눈 내리는 오후의 작은 동네 서점 용서점 실내. 벽마다 책이 꽂힌 나무 서가, 창가 독서 테이블, 소파와 스탠드 조명이 있다.';
-  return '맑은 오후의 작은 동네 서점 용서점 실내. 벽마다 책이 꽂힌 나무 서가, 창가 독서 테이블, 소파와 스탠드 조명이 있다.';
+  if (kind === 'rain') return '비 오는 오후의 작은 동네 서점 Y-Place 실내. 벽마다 책이 꽂힌 나무 서가, 창가 독서 테이블, 소파와 스탠드 조명이 있다.';
+  if (kind === 'snow') return '눈 내리는 오후의 작은 동네 서점 Y-Place 실내. 벽마다 책이 꽂힌 나무 서가, 창가 독서 테이블, 소파와 스탠드 조명이 있다.';
+  return '맑은 오후의 작은 동네 서점 Y-Place 실내. 벽마다 책이 꽂힌 나무 서가, 창가 독서 테이블, 소파와 스탠드 조명이 있다.';
 }
 
 /** WMO weather code → 서점 연출 */

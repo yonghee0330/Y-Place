@@ -14,7 +14,7 @@ import { apiBaseFromWs, resolvePresence, type Params, type QualityLevel } from '
 import { detectQuality, profileFor, type QualityProfile } from './core/quality';
 import { Rng } from './core/rng';
 import { MANAGER_COLOR, MANAGER_NICKNAME } from './core/manager';
-import { loadAuthorId, loadProfile, loadSettings, saveSettings, type Profile, type Settings } from './core/storage';
+import { loadProfile, loadSettings, saveSettings, type Profile, type Settings } from './core/storage';
 import { LocalPresence } from './net/localPresence';
 import { randomNickname } from './net/nickname';
 import { newId, sanitizeSharedBook, type ActionEvent, type Presence, type PlayerState, type SharedBook } from './net/presence';
@@ -29,11 +29,9 @@ import { BookBadgeHits } from './ui/bookBadgeHits';
 import { BookPeekSheet } from './ui/bookPeek';
 import { BookSheet } from './ui/bookSheet';
 import { DrinkSheet } from './ui/drinkSheet';
-import { PostitWall } from './ui/postitWall';
 import { drinkCooldownMs, drinkToast, isDrinkKind, type DrinkKind } from './net/drink';
-import { PostitStore } from './net/postit';
 import {
-  EVENT_BOARD, PORTALS, SEATS, SPAWN, SPAWNS, applyLayout, colliders, currentSpaceId, isPresent, spaceCapacity, spaceLabel,
+PORTALS, SEATS, SPAWN, SPAWNS, applyLayout, colliders, currentSpaceId, spaceCapacity, spaceLabel,
   type PortalDef, type SpaceId,
 } from './scene/layout';
 import { buildPostFx, type PostFx } from './scene/postfx';
@@ -143,14 +141,6 @@ export async function startApp(
   const ui = document.getElementById('ui')!;
   const toasts = new Toasts(ui);
   const focus = new FocusMode(ui, () => setFocus(false));
-  const authorId = loadAuthorId();
-  const postitStore = new PostitStore();
-  const postitWall = new PostitWall(ui, postitStore, () => sessionNick, () => authorId, () => setPostitWall(false));
-  void postitStore.init().then(() => {
-    const syncBoard = () => store.eventBoard?.setNotes(postitStore.list());
-    syncBoard();
-    postitStore.onChange(() => syncBoard());
-  });
   const bookCard = new BookCard(ui);
   const bookSheet = new BookSheet();
   const bookPeek = new BookPeekSheet();
@@ -291,14 +281,6 @@ export async function startApp(
     toasts.show('바닥을 눌러 걷고, 의자를 눌러 앉아 보세요', {
       duration: 8000,
       kind: 'guide',
-      action: {
-        label: '보드 열기',
-        onClick: () => {
-          settings.introDismissed = true;
-          saveSettings(settings);
-          if (currentSpaceId() === 'shop') setPostitWall(true);
-        },
-      },
     });
   }
 
@@ -564,7 +546,6 @@ export async function startApp(
     if (on === focus.active) return;
     if (on) {
       if (!connected) return;
-      if (postitWall.active) setPostitWall(false);
       // 이미 책을 펼친 상태면 같은 책으로 바로 집중 모드
       if (movement.reading && currentBook) {
         enterFocusWith(currentBook);
@@ -581,20 +562,6 @@ export async function startApp(
     bookCard.hide();
     pushState(true);
     syncPeers();
-  }
-
-  function setPostitWall(on: boolean): void {
-    if (on === postitWall.active) return;
-    if (on) {
-      if (focus.active) setFocus(false);
-      postitWall.enter();
-      hud.setHidden(true);
-      me.hideLabel = true;
-      return;
-    }
-    postitWall.exit();
-    hud.setHidden(false);
-    me.hideLabel = false;
   }
 
   /** 읽기 모드 구도: 책 읽는 내 아바타를 앞쪽 비스듬한 위에서 본다(머리가 큰 아바타라 어깨 너머로는 책이 가려짐). */
@@ -616,7 +583,6 @@ export async function startApp(
   const hitGroup = new THREE.Group();
   scene.add(hitGroup);
   /** 포털 확인을 거절·닫은 뒤 같은 문 앞에서 바로 다시 뜨지 않게 */
-  let boardHintShown = false;
 
   /** 한글 조사: 받침 없거나 ㄹ이면 '로', 있으면 '으로' */
   function particleRo(word: string): string {
@@ -656,7 +622,7 @@ export async function startApp(
   function portalUsable(_portal: PortalDef): boolean { return true; }
 
   function askEnterPortal(portal: PortalDef, opts?: { fromMenu?: boolean }): void {
-    if (switchingSpace || focus.active || postitWall.active || anySheetOpen()) return;
+    if (switchingSpace || focus.active || anySheetOpen()) return;
     if (portal.to === currentSpaceId()) return;
     if (!opts?.fromMenu && !portalUsable(portal)) return;
     const name = spaceLabel(portal.to);
@@ -676,7 +642,6 @@ export async function startApp(
       const box = new THREE.Mesh(new THREE.BoxGeometry(c.x1 - c.x0, c.h, c.z1 - c.z0), new THREE.MeshBasicMaterial({ visible: false }));
       box.position.set((c.x0 + c.x1) / 2, c.h / 2, (c.z0 + c.z1) / 2);
       box.userData.seats = c.seats ?? null;
-      if (c.eventBoard) box.userData.eventBoard = true;
       hitGroup.add(box);
     }
     for (const p of PORTALS) {
@@ -697,7 +662,6 @@ export async function startApp(
   let switchingSpace = false;
   async function enterSpace(to: SpaceId, via?: PortalDef): Promise<void> {
     if (switchingSpace || to === currentSpaceId() || focus.active) return;
-    if (postitWall.active) setPostitWall(false);
     switchingSpace = true;
     if (movement.reading) {
       movement.setReading(false);
@@ -764,7 +728,7 @@ export async function startApp(
   });
 
   function clickAt(clientX: number, clientY: number): void {
-    if (focus.active || postitWall.active || anySheetOpen()) return;
+    if (focus.active || anySheetOpen()) return;
     const rect = canvas.getBoundingClientRect();
     // 머리 위 책 배지: 화면 좌표 히트(오버레이 레이어·빌보드 뒷면 문제 없음)
     const badgeActor = crowd.pickBookBadge(clientX, clientY, camera, rect);
@@ -774,21 +738,14 @@ export async function startApp(
       -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     ray.setFromCamera(ndc, camera);
-    const boardMesh = store.eventBoard?.hitMesh;
-    const targets = boardMesh && currentSpaceId() === 'shop'
-      ? [boardMesh, ...hitGroup.children, store.floor]
-      : [...hitGroup.children, store.floor];
+    const targets = [...hitGroup.children, store.floor];
     const hits = ray.intersectObjects(targets, false);
     if (!hits.length) return;
     // 보드·스크린·문·의자처럼 상호작용 가능한 히트를 일반 가구 충돌보다 우선
     const pick = hits.find((h) => {
       const u = h.object.userData;
-      return !!(u.eventBoard || (u.portal && portalUsable(u.portal as PortalDef)) || (u.seats && (u.seats as string[]).length));
+      return !!((u.portal && portalUsable(u.portal as PortalDef)) || (u.seats && (u.seats as string[]).length));
     }) ?? hits[0];
-    if (pick.object.userData.eventBoard) {
-      setPostitWall(true);
-      return;
-    }
     const portal = pick.object.userData.portal as PortalDef | undefined;
     if (portal) {
       if (portalUsable(portal)) askEnterPortal(portal);
@@ -818,7 +775,7 @@ export async function startApp(
 
   // 책 배지·보드·스크린 위에 올리면 포인터로 클릭 가능함을 알린다
   canvas.addEventListener('pointermove', (e) => {
-    if (focus.active || postitWall.active || anySheetOpen()) {
+    if (focus.active || anySheetOpen()) {
       canvas.style.cursor = '';
       return;
     }
@@ -832,15 +789,6 @@ export async function startApp(
       -((e.clientY - rect.top) / rect.height) * 2 + 1,
     );
     ray.setFromCamera(ndc, camera);
-    if (currentSpaceId() === 'shop') {
-      const board = store.eventBoard?.hitMesh;
-      const boardTargets = board ? [board, ...hitGroup.children] : hitGroup.children;
-      const bh = ray.intersectObjects(boardTargets, false);
-      if (bh.some((h) => h.object.userData.eventBoard)) {
-        canvas.style.cursor = 'pointer';
-        return;
-      }
-    }
 
   });
   canvas.addEventListener('pointerleave', () => {
@@ -852,11 +800,10 @@ export async function startApp(
     if (e.key === 'Escape') {
       // 시트가 열려 있으면 시트를 먼저 닫는다(포커스가 시트 밖에 있어도)
       if (anySheetOpen()) closeOpenSheet();
-      else if (postitWall.active) setPostitWall(false);
       else if (focus.active) setFocus(false);
       return;
     }
-    if (anySheetOpen() || postitWall.active) return;
+    if (anySheetOpen()) return;
     if (e.key === '1') nod();
     else if (e.key === '2') toggleBook();
     else if (e.key === '3') setFocus(!focus.active);
@@ -940,33 +887,13 @@ export async function startApp(
       camera.position.set(p.x + meCam[0], p.y + meCam[1], p.z + meCam[2]);
       camera.lookAt(p.x, p.y + 0.55, p.z);
     }
-    badgeHits.sync(crowd, camera, canvas, !focus.active && !postitWall.active && !anySheetOpen());
+    badgeHits.sync(crowd, camera, canvas, !focus.active && !anySheetOpen());
     ring.update(dt);
     {
       const p = me.root.position;
       store.updatePortals(t, { x: p.x, z: p.z, ry: lookYaw(), space: currentSpaceId() });
     }
-    // 창가 포스트잇 보드 근처면 한 번 안내
-    if (
-      currentSpaceId() === 'shop'
-      && store.eventBoard
-      && !focus.active
-     
-      && !postitWall.active
-      && !anySheetOpen()
-      && !boardHintShown
-      && isPresent(EVENT_BOARD)
-    ) {
-      const p = me.root.position;
-      if (Math.hypot(p.x - EVENT_BOARD.x, p.z - EVENT_BOARD.z) < 1.6) {
-        boardHintShown = true;
-        toasts.show('보드를 누르면 포스트잇을 남길 수 있어요', {
-          duration: 5000,
-          kind: 'guide',
-          action: { label: '열기', onClick: () => setPostitWall(true) },
-        });
-      }
-    }
+
   });
   loop.start();
 
@@ -987,7 +914,6 @@ export async function startApp(
     switchingSpace: () => switchingSpace,
     portals: () => PORTALS.map(p=>({...p})),
     camera: () => ({position:camera.position.toArray(),fov:camera.fov}),
-    openBoard: () => setPostitWall(true),
     weather: () => weather,
     /** 장면이 쓰는 텍스처 중 가장 큰 변의 길이(성능 예산: 1024px 이하) */
     maxTextureSize: () => {
@@ -1003,7 +929,7 @@ export async function startApp(
       });
       return max;
     },
-    peekBook: (title: string, author: string, publisher: string) => bookPeek.open({ nickname: '용서점 운영자', book: { title, author, publisher, coverUrl: null } as never }),
+    peekBook: (title: string, author: string, publisher: string) => bookPeek.open({ nickname: 'Y-Place 운영자', book: { title, author, publisher, coverUrl: null } as never }),
     sipNow: (kind: Parameters<typeof me.avatar.anim.sip>[0]) => me.avatar.anim.sip(kind),
     walkTo: (x: number, z: number) => movement.walkTo({ x, z }),
     space: () => currentSpaceId(),
@@ -1026,8 +952,6 @@ export async function startApp(
         placeAtSeat(me, s);
       }
     },
-    postits: () => postitStore.list(),
-    openPostitWall: () => setPostitWall(true),
   };
 
   // 첫 프레임(그림자 포함)이 그려진 뒤 로딩을 걷고 준비 완료 표시
