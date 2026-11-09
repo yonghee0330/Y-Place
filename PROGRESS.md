@@ -57,3 +57,9 @@
 - 18MB 팩(스크린샷 PNG)으로 첫 푸시가 HTTP 400으로 끊겨 `http.postBuffer`를 늘려 재시도해 성공.
 - 푸시로 Actions "Deploy to GitHub Pages" 실행: build·deploy 성공. Pages 설정은 여전히 `pages` 브랜치(legacy) 방식이며 공개 주소 HTTP 200, 제목 Y-Place 확인.
 - 배포 방식을 Actions 하나로 통일할지(Settings → Pages → Source)는 운영자 확인 대기.
+
+### 2026-11-10 — 배포를 GitHub Actions로 통일
+- 운영자 승인으로 Pages Source를 `pages` 브랜치(legacy)에서 GitHub Actions(workflow)로 전환.
+- Actions 수동 실행(f4f8207) build·deploy 성공, github-pages 배포 상태 success.
+- 공개 주소 Chromium 확인: 제목 Y-Place, 캔버스·입장 버튼 표시, pageerror/console error 0.
+- `pages` 브랜치는 사이트에 쓰이지 않지만 삭제하지 않고 보존. README 배포 설명 갱신.

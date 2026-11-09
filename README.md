@@ -39,4 +39,4 @@ GitHub 저장소의 Pages Source를 GitHub Actions로 설정합니다. `main` �
 
 검증 기록은 `PROGRESS.md`, 직접 확인한 화면은 `docs/screens/REVIEW.md`에 남깁니다.
 
-현재 공개 사이트는 `pages` 브랜치의 정적 빌드를 Pages Source로 사용합니다. 기존 Git 인증에는 `workflow` 권한이 없어 소스 `main`은 로컬에만 있습니다. 향후 Actions 배포로 전환하려면 해당 권한을 가진 Git 인증으로 `main`을 푸시하고 Pages Source를 GitHub Actions로 바꿔야 합니다.
+2026-11-10부터 공개 사이트는 GitHub Actions로 배포합니다(Pages Source = GitHub Actions). `main`에 푸시하면 자동으로 갱신됩니다. 예전 임시 배포용 `pages` 브랜치는 더 이상 사이트에 쓰이지 않으며, 기록 보존을 위해 남겨 두었습니다.
