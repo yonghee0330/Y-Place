@@ -2,7 +2,7 @@
 
 동네책방 사진에서 색감과 가구 배치를 참고해 만든 개인 3D 작업 공간입니다. Y-Place와 작은 모임방을 나무 문으로 오가며 앉아서 책을 고르고, 조용한 합성 음악을 켤 수 있습니다. 모든 가구와 질감은 three.js 코드로 생성합니다.
 
-[Y-Place 열기](https://yonghee0330.github.io/yongseojeom/) · [소스 저장소](https://github.com/yonghee0330/yongseojeom)
+[Y-Place 열기](https://yonghee0330.github.io/Y-Place/) · [소스 저장소](https://github.com/yonghee0330/Y-Place)
 
 ## 실행과 검사
 

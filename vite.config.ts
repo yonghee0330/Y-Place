@@ -24,7 +24,7 @@ function pwa(): Plugin {
 }
 
 export default defineConfig({
-  // 상대 경로라 GitHub Pages 하위 경로(/yongseojeom/)나 다른 정적 호스팅에서도 그대로 동작한다
+  // 상대 경로라 GitHub Pages 하위 경로(/Y-Place/)나 다른 정적 호스팅에서도 그대로 동작한다
   base: './',
   plugins: [pwa()],
   build: {

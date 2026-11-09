@@ -63,3 +63,8 @@
 - Actions 수동 실행(f4f8207) build·deploy 성공, github-pages 배포 상태 success.
 - 공개 주소 Chromium 확인: 제목 Y-Place, 캔버스·입장 버튼 표시, pageerror/console error 0.
 - `pages` 브랜치는 사이트에 쓰이지 않지만 삭제하지 않고 보존. README 배포 설명 갱신.
+
+### 2026-11-10 — 저장소·폴더 이름을 Y-Place로 변경
+- 운영자 요청으로 GitHub 저장소 `yonghee0330/yongseojeom` → `yonghee0330/Y-Place`, 로컬 폴더 `/Users/mac/코덱스-AI실험실/yongseojeom` → `/Users/mac/코덱스-AI실험실/Y-Place`.
+- 공개 주소가 https://yonghee0330.github.io/Y-Place/ 로 바뀜. GitHub은 Pages 옛 주소(/yongseojeom/)를 연결해 주지 않음.
+- README 링크와 경로 주석만 갱신. 내부 식별자(`yongseojeom.*` 저장 키, presence 채널, 테스트용 `__YONGSEOJEOM`)는 방문자 저장값 보존을 위해 유지.
