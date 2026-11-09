@@ -51,3 +51,9 @@
 - 화면 제목·입장 버튼·상단 방 이름·문 이름판·벽 간판·운영자 표기·웹 앱 이름을 Y-Place로 변경.
 - 카운터 앞 글씨판과 게시판의 모델·저장소·UI·클릭 동작 제거. 기존 책 선택·좌석·두 방 이동 유지.
 - typecheck/build 및 e2e 5/5 통과. 06-y-place-entry/sign 화면을 직접 확인하고 콘솔 오류 0.
+
+### 2026-11-10 — 소스 GitHub 백업
+- 토큰에 `workflow` 권한이 생겨 로컬에만 있던 `main`(커밋 8개, `.github/workflows/deploy.yml` 포함)을 `origin/main`에 푸시. 푸시 전 main 전체 기록에서 비밀값 패턴 검색 0건.
+- 18MB 팩(스크린샷 PNG)으로 첫 푸시가 HTTP 400으로 끊겨 `http.postBuffer`를 늘려 재시도해 성공.
+- 푸시로 Actions "Deploy to GitHub Pages" 실행: build·deploy 성공. Pages 설정은 여전히 `pages` 브랜치(legacy) 방식이며 공개 주소 HTTP 200, 제목 Y-Place 확인.
+- 배포 방식을 Actions 하나로 통일할지(Settings → Pages → Source)는 운영자 확인 대기.
