@@ -933,6 +933,7 @@ export async function startApp(
     peekBook: (title: string, author: string, publisher: string) => bookPeek.open({ nickname: 'Y-Place 운영자', book: { title, author, publisher, coverUrl: null } as never }),
     sipNow: (kind: Parameters<typeof me.avatar.anim.sip>[0]) => me.avatar.anim.sip(kind),
     setReading: (on: boolean) => movement.setReading(on),
+    meVisible: () => me.root.visible,
     debugLook: (look: Parameters<typeof me.avatar.setLook>[0]) => me.avatar.setLook(look),
     walkTo: (x: number, z: number) => movement.walkTo({ x, z }),
     space: () => currentSpaceId(),

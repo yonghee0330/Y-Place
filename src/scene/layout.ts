@@ -89,7 +89,8 @@ function emptyBase(id: SpaceId, label: string, room: RoomBounds): Omit<SpaceLayo
 }
 
 function makeShop(): SpaceLayout {
-  const spawn = { x: 0.1, z: 1.6, ry: Math.PI };
+  // 뒷벽에서 1.2m 이상 떨어져야 따라가기 카메라가 아바타 뒤에 설 자리가 생긴다
+  const spawn = { x: 0.1, z: 1.05, ry: Math.PI };
   const armchairs = [{ x: -1.25, z: -1.48, ry: .18 }, { x: .12, z: -1.48, ry: -.25 }];
   return { ...emptyBase('shop', 'Y-Place', roomOf(5.5, 4.5, 2.8)),
     openings: [{ cx: -.85, w: 2.75, y0: .65, y1: 2.45, kind: 'window' }],
@@ -123,7 +124,8 @@ function makeCircle(): SpaceLayout {
     const x = Math.sin(angle) * 1.08, z = Math.cos(angle) * 1.08;
     return { x, z, ry: Math.atan2(-x, -z) + r.range(-0.025, 0.025) };
   });
-  const spawn = { x: -1.35, z: 1.45, ry: Math.PI };
+  // 뒷벽에서 떨어뜨려 카메라가 아바타 뒤에 서게 한다(의자와도 0.7m 이상)
+  const spawn = { x: -1.45, z: 0.95, ry: Math.PI };
   return { ...emptyBase('circle', '작은 모임방', roomOf(4.2, 4.2, 2.7)),
     openings: [],
     shelves: [{ x: 1.88, z: -0.95, ry: -Math.PI / 2, w: 1.2, wing: 'C' }],
@@ -134,7 +136,7 @@ function makeCircle(): SpaceLayout {
       from: { x: c.x * 1.35, z: c.z * 1.35 } })),
     floorLamps: [], floorPlants: [{x: -1.7, z: -0.7, scale: 0.8}],
     pendants: [{ x: 0, z: 0, drop: 0.65 }],
-    spawn, spawns: [spawn, { x: 1.5, z: 1.5, ry: Math.PI }],
+    spawn, spawns: [spawn, { x: 1.45, z: 0.95, ry: Math.PI }],
     portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: 'Y-Place' }],
   };
 }
