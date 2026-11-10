@@ -2,17 +2,29 @@
 import { DRINK_OPTIONS, DRINK_TIMING, drinkAnimDuration, type DrinkKind } from '../net/drink';
 import type { AvatarState } from '../net/presence';
 import * as THREE from 'three';
-import type { Avatar } from './avatar';
+import { CUP_POS, HIP_Y, type Avatar } from './avatar';
 
 const damp = (cur: number, target: number, rate: number, dt: number) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const T = DRINK_TIMING;
 
-// 오른쪽 팔 기본 어깨 위치(avatar.ts의 arm.position과 같다)와, 입에 잔을 댈 때의 팔 각도
-const ARM_R_X = -0.15;
-const ARM_R_Y = 0.24;
-const MOUTH_ARM_X = -1.87;
-const MOUTH_ARM_Z = 0.49;
+// 앉기: 허벅지를 앞으로 거의 수평, 무릎을 굽혀 정강이를 수직으로
+const SIT_THIGH = 1.5;
+const SIT_KNEE = 1.5;
+// 팔 포즈(어깨 x·z 회전, 팔꿈치 굽힘). 오른팔 기준 z, 왼팔은 부호 반대.
+/** 양손으로 가슴 앞에 책 들기 */
+const READ = { x: -0.3, z: 0.28, elbow: -1.5 };
+/** 잔을 가슴 앞에 들고 있기 */
+const HOLD = { x: -0.3, z: 0.18, elbow: -1.3 };
+/** 잔을 입에 대기 */
+const MOUTH = { x: -1.7, z: 0.35, elbow: -1.5 };
+
+const _qa = new THREE.Quaternion();
+const _qf = new THREE.Quaternion();
+const _qt = new THREE.Quaternion();
+const _x = new THREE.Vector3(1, 0, 0);
+const _off = new THREE.Vector3();
 
 function easeInOut(t: number): number {
   const x = Math.min(1, Math.max(0, t));
@@ -162,17 +174,21 @@ export class AvatarAnimator {
     this.phase += dt * (6 + this.speed * 5) * (walking ? 1 : 0.3);
 
     const swing = Math.sin(this.phase) * this.walkW;
+    const stride = Math.cos(this.phase) * this.walkW;
     const breath = Math.sin(this.time * 2.1);
 
     // 몸통: 숨쉬기 + 걸을 때 위아래 + 앉을 때 살짝 뒤로
-    a.body.position.y = 0.2 + Math.abs(Math.sin(this.phase)) * 0.022 * this.walkW;
-    a.body.scale.set(1 - breath * 0.006, 1 + breath * 0.012, 1 - breath * 0.006);
-    a.body.rotation.x = -0.06 * this.sitW + 0.05 * this.walkW;
-    a.body.rotation.z = Math.sin(this.phase) * 0.04 * this.walkW;
+    a.body.position.y = HIP_Y + Math.abs(Math.sin(this.phase)) * 0.02 * this.walkW;
+    a.body.scale.set(1 - breath * 0.004, 1 + breath * 0.008, 1 - breath * 0.004);
+    a.body.rotation.x = -0.07 * this.sitW + 0.04 * this.walkW;
+    a.body.rotation.z = Math.sin(this.phase) * 0.025 * this.walkW;
+    a.body.rotation.y = Math.sin(this.phase) * 0.06 * this.walkW;
 
-    // 다리: 걷기 흔들기, 앉으면 앞으로
-    a.legL.rotation.x = swing * 0.55 - 1.45 * this.sitW;
-    a.legR.rotation.x = -swing * 0.55 - 1.45 * this.sitW;
+    // 다리: 허벅지 흔들기 + 앞으로 나가는 다리의 무릎 굽힘. 앉으면 허벅지 수평, 정강이 수직.
+    a.legL.rotation.x = swing * 0.5 - SIT_THIGH * this.sitW;
+    a.legR.rotation.x = -swing * 0.5 - SIT_THIGH * this.sitW;
+    a.shinL.rotation.x = SIT_KNEE * this.sitW + (0.08 * this.walkW + 0.75 * Math.max(0, -stride)) * (1 - this.sitW);
+    a.shinR.rotation.x = SIT_KNEE * this.sitW + (0.08 * this.walkW + 0.75 * Math.max(0, stride)) * (1 - this.sitW);
 
     // 마시기 포즈
     let drinkMouth = 0;
@@ -187,47 +203,31 @@ export class AvatarAnimator {
       if (pose.done || this.sipT > drinkAnimDuration(this.sipKind) + 0.05) {
         this.sipT = -1;
         a.cup.visible = false;
-        a.cup.rotation.set(0.35, 0.2, -0.4);
-        a.cup.scale.setScalar(1);
-        a.armR.rotation.y = 0;
         drinkMouth = 0;
         drinkTip = 0;
         drinkHold = 0;
       }
     }
-
-    // 마시는 시늉: 입안에 넣지 않고, 손·잔을 앞으로 내밀어 잘 보이게
     const present = Math.max(drinkHold, drinkMouth * 0.85);
-    const sipLift = drinkMouth;
-    const drinkW = Math.max(present, sipLift * 0.5);
-    const sipMute = 1 - Math.min(1, drinkW * 1.1);
-
-    // 팔: 걷기(다리와 반대), 읽기, 마시기(가슴 앞으로 내밀기)
-    const readArmX = -1.05, readArmZ = 0.38;
-    // 너무 높이 올리지 않고(~-1.2), 옆으로 벌려 잔이 몸 앞에 보이게
-    const armRaise = -0.92 * present - 0.28 * sipLift;
-    const armZ = 0.52 * present + 0.1 * sipLift;
-    const armY = -0.12 * present - 0.1 * sipLift;
-    a.armL.rotation.x = -swing * 0.45 * (1 - this.readW) * sipMute + readArmX * this.readW * sipMute;
-    a.armR.rotation.x = swing * 0.45 * (1 - this.readW) * sipMute + readArmX * this.readW * sipMute
-      + armRaise;
-    a.armL.rotation.z = 0.12 * (1 - this.readW) - readArmZ * this.readW;
-    a.armR.rotation.z = -0.12 * (1 - this.readW) * sipMute + readArmZ * this.readW * sipMute
-      + armZ;
-    a.armR.rotation.y = armY;
-    // 어깨를 살짝 앞으로 — 잔이 카메라에 잘 잡히게
-    a.armR.position.z = 0.055 * present;
-    // 입(얼굴 한가운데 아래쪽)으로: 입이 가까워질수록(mouth→1) 팔을 앞·위로 들어 잔을 입 앞에 둔다.
-    // 아바타 팔이 짧아서 어깨를 앞·위로 조금 옮겨 손이 닿게 한다.
     const m = drinkMouth;
-    a.armR.rotation.x += (MOUTH_ARM_X - a.armR.rotation.x) * m;
-    a.armR.rotation.z += (MOUTH_ARM_Z - a.armR.rotation.z) * m;
-    a.armR.rotation.y *= 1 - m;
-    a.armR.position.set(ARM_R_X + 0.06 * m, ARM_R_Y + 0.04 * m, a.armR.position.z * (1 - m) + 0.06 * m);
+    const sipMute = 1 - Math.min(1, Math.max(present, m) * 1.1);
 
-    // 머리: 읽을 때 숙임. 마실 때는 살짝만 끄덕(입에 대지 않음).
-    let headX = 0.28 * this.readW * sipMute + Math.sin(this.time * 0.9) * 0.02 * (1 - this.walkW)
-      + 0.12 * sipLift - 0.1 * drinkTip; // 입으로 갈 땐 살짝 숙이고, 잔을 기울일 땐 고개를 젖힌다
+    // 팔: 걷기(다리와 반대) → 읽기(양손으로 책) → 잔 들기 → 입으로
+    const rW = this.readW * sipMute;
+    const hangX = (s: number) => s * 0.42;
+    const relaxElbow = -0.12 - 0.28 * this.walkW - 0.1 * this.sitW;
+    a.armL.rotation.x = lerp(hangX(-swing), READ.x, rW);
+    a.armL.rotation.z = lerp(0.07, -READ.z, rW);
+    a.foreL.rotation.x = lerp(relaxElbow - 0.15 * Math.max(0, swing), READ.elbow, rW);
+
+    let rx = lerp(hangX(swing), READ.x, rW);
+    let rz = lerp(-0.07, READ.z, rW);
+    let re = lerp(relaxElbow - 0.15 * Math.max(0, -swing), READ.elbow, rW);
+    rx = lerp(rx, HOLD.x, present); rz = lerp(rz, HOLD.z, present); re = lerp(re, HOLD.elbow, present);
+    rx = lerp(rx, MOUTH.x, m); rz = lerp(rz, MOUTH.z, m); re = lerp(re, MOUTH.elbow, m);
+
+    // 머리: 읽을 때 숙임. 마실 때는 입으로 갈 때 살짝 숙이고, 기울일 땐 고개를 젖힌다.
+    let headX = 0.3 * rW + Math.sin(this.time * 0.9) * 0.02 * (1 - this.walkW) + 0.1 * m - 0.12 * drinkTip;
     let headZ = Math.sin(this.time * 0.6) * 0.03 * (1 - this.walkW) * (1 - this.readW) * sipMute;
 
     // 가끔 페이지 넘기는 손짓
@@ -240,49 +240,38 @@ export class AvatarAnimator {
     }
     if (this.pageT >= 0) {
       this.pageT += dt;
-      const k = Math.sin(Math.min(1, this.pageT / 0.7) * Math.PI);
-      a.armR.rotation.z += 0.5 * k * sipMute;
-      a.armR.rotation.x -= 0.25 * k * sipMute;
+      const k = Math.sin(Math.min(1, this.pageT / 0.7) * Math.PI) * sipMute;
+      rz += 0.35 * k;
+      re += 0.35 * k;
       headZ += 0.04 * k;
       if (this.pageT > 0.7) this.pageT = -1;
     }
+    a.armR.rotation.set(rx, 0, rz);
+    a.foreR.rotation.x = re;
 
     // 눈인사
     if (this.bowT >= 0) {
       this.bowT += dt;
       const k = Math.sin(Math.min(1, this.bowT / 0.8) * Math.PI);
-      headX += 0.42 * k;
-      a.body.rotation.x += 0.2 * k;
+      headX += 0.4 * k;
+      a.body.rotation.x += 0.22 * k;
       if (this.bowT > 0.8) this.bowT = -1;
     }
 
-    // 잔: 크게·앞에 두고 기울이는 시늉만. 몸도 살짝만 따라감.
+    // 잔: 손에 붙어 다니되 늘 세워 두고(팔 회전을 되돌림), 마실 땐 입 쪽으로 기울인다.
     if (this.sipT >= 0) {
       a.cup.visible = true;
-      const size = 1.4 + 0.25 * present + 0.1 * drinkTip;
-      a.cup.scale.setScalar(size);
-      a.cup.position.set(0.02, -0.17 + 0.015 * sipLift, 0.04 + 0.05 * present);
-      a.cup.rotation.x = 0.25 + 0.55 * drinkTip + 0.12 * sipLift;
-      a.cup.rotation.y = 0.15;
-      a.cup.rotation.z = -0.35;
-      // 입 쪽으로 갈수록 잔을 세워서(팔이 올라간 만큼 되돌려) 입에 가져가고, 마실 땐 입술 쪽으로 기울인다
-      if (m > 0.001) {
-        const armQ = new THREE.Quaternion().setFromEuler(a.armR.rotation);
-        const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -(0.12 + 0.75 * drinkTip));
-        const target = armQ.clone().invert().multiply(tilt);
-        const cur = new THREE.Quaternion().setFromEuler(a.cup.rotation);
-        a.cup.quaternion.copy(cur.slerp(target, m));
-      }
+      a.cup.scale.setScalar(0.9 + 0.12 * present);
+      _qa.setFromEuler(a.armR.rotation);
+      _qf.setFromEuler(a.foreR.rotation);
+      _qa.multiply(_qf).invert();
+      _qt.setFromAxisAngle(_x, -(0.12 * present + (0.1 + 0.95 * drinkTip) * m + 0.3 * drinkTip * (1 - m)));
+      // 손이 잔 옆면을 감싸도록: 똑바로 선 잔 기준으로 몸 안쪽·아래로 조금 옮긴다
+      a.cup.position.copy(_off.set(0.021, -0.025, 0.005).applyQuaternion(_qa)).add(CUP_POS);
+      a.cup.quaternion.copy(_qa.multiply(_qt));
       a.body.rotation.x += -0.02 * drinkTip;
-      if (this.sipKind === 'water' && sipLift > 0.85) {
-        a.body.position.y += 0.008 * drinkTip;
-      }
     } else {
       a.cup.visible = false;
-      a.cup.position.set(0.01, -0.175, 0.02);
-      a.cup.rotation.set(0.35, 0.2, -0.4);
-      a.armR.rotation.y = 0;
-      a.armR.position.set(ARM_R_X, ARM_R_Y, 0);
     }
 
     a.head.rotation.x = headX;
@@ -301,6 +290,6 @@ export class AvatarAnimator {
     }
 
     a.book.visible = this.readW > 0.45 && this.sipT < 0;
-    a.book.scale.setScalar(Math.min(1, this.readW * 1.3));
+    a.book.scale.setScalar(0.85 * Math.min(1, this.readW * 1.3));
   }
 }

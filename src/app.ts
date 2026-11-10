@@ -5,6 +5,7 @@ import { BookstoreBgm, hasConfiguredBgm } from './audio/bgm';
 import { Sfx } from './audio/sfx';
 import { Crowd, type Actor } from './avatar/crowd';
 import { OVERLAY_LAYER } from './avatar/nameplate';
+import { BOOK_POS, HEAD_Y, HIP_Y } from './avatar/avatar';
 import { placeAtSeat, spawnNpcs, syncNpcVisibility } from './avatar/npc';
 import { CAM_PRESETS, FollowCamera, applyPreset, createCamera } from './controls/camera';
 import { CanvasInput, isTyping } from './controls/input';
@@ -130,7 +131,7 @@ export async function startApp(
 
   const follow = new FollowCamera(camera, SPAWN.ry + Math.PI);
   follow.reducedMotion = reducedMotion();
-  const fitLook = () => (follow.lookHeight = camera.aspect < 0.8 ? .85 : .8);
+  const fitLook = () => (follow.lookHeight = camera.aspect < 0.8 ? .92 : .86);
   fitLook();
   follow.fitToSpace(true);
   follow.follow(me.root.position, true);
@@ -564,18 +565,18 @@ export async function startApp(
     syncPeers();
   }
 
-  /** 읽기 모드 구도: 책 읽는 내 아바타를 앞쪽 비스듬한 위에서 본다(머리가 큰 아바타라 어깨 너머로는 책이 가려짐). */
+  /** 읽기 모드 구도: 책 읽는 내 아바타를 앞쪽 비스듬한 위에서 본다. */
   function focusPose() {
     const p = me.root.position, ry = me.root.rotation.y;
     const f = new THREE.Vector3(Math.sin(ry), 0, Math.cos(ry));
     const side = new THREE.Vector3(f.z, 0, -f.x);
-    const head = p.y + 0.69;
+    const head = p.y + HEAD_Y;
     // 세로 화면은 시야가 좁아 조금 더 떨어진다
     const k = camera.aspect < 0.8 ? 1.55 : 1;
     const pos = p.clone().addScaledVector(f, 1.05 * k).addScaledVector(side, 0.7 * k);
     pos.y = head + 0.32 * k;
     const look = p.clone().addScaledVector(f, 0.12).addScaledVector(side, 0.05);
-    look.y = p.y + 0.5;
+    look.y = p.y + HIP_Y + BOOK_POS.y + 0.05;
     return { pos, look };
   }
 
@@ -879,7 +880,7 @@ export async function startApp(
       follow.update(dt);
     }
     // 벽에 가까운 카메라에서 내 머리가 화면을 덮으면 잠시 1인칭처럼 표시한다.
-    const headDistance = Math.hypot(camera.position.x-me.root.position.x, camera.position.y-me.root.position.y-.8, camera.position.z-me.root.position.z);
+    const headDistance = Math.hypot(camera.position.x-me.root.position.x, camera.position.y-me.root.position.y-HEAD_Y, camera.position.z-me.root.position.z);
     me.root.visible = !!fixedCam || !!meCam || headDistance > (me.root.visible ? .95 : 1.1);
     crowd.update(dt, t, camera);
     if (meCam) {
@@ -931,6 +932,8 @@ export async function startApp(
     },
     peekBook: (title: string, author: string, publisher: string) => bookPeek.open({ nickname: 'Y-Place 운영자', book: { title, author, publisher, coverUrl: null } as never }),
     sipNow: (kind: Parameters<typeof me.avatar.anim.sip>[0]) => me.avatar.anim.sip(kind),
+    setReading: (on: boolean) => movement.setReading(on),
+    debugLook: (look: Parameters<typeof me.avatar.setLook>[0]) => me.avatar.setLook(look),
     walkTo: (x: number, z: number) => movement.walkTo({ x, z }),
     space: () => currentSpaceId(),
     enterSpace: (id: SpaceId) => enterSpace(id),

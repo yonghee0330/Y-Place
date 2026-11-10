@@ -68,3 +68,11 @@
 - 운영자 요청으로 GitHub 저장소 `yonghee0330/yongseojeom` → `yonghee0330/Y-Place`, 로컬 폴더 `/Users/mac/코덱스-AI실험실/yongseojeom` → `/Users/mac/코덱스-AI실험실/Y-Place`.
 - 공개 주소가 https://yonghee0330.github.io/Y-Place/ 로 바뀜. GitHub은 Pages 옛 주소(/yongseojeom/)를 연결해 주지 않음.
 - README 링크와 경로 주석만 갱신. 내부 식별자(`yongseojeom.*` 저장 키, presence 채널, 테스트용 `__YONGSEOJEOM`)는 방문자 저장값 보존을 위해 유지.
+
+### 2026-11-10 — 슬림 미니미 아바타
+- 운영자 요청으로 아바타를 비북스-M(둥근 종 몸통, 0.9m)과 다른 "슬림하지만 작고 귀여운 미니미" 스타일로 교체: 키 약 1.1m, 약 3.5등신, 납작한 가는 몸통, 가는 팔다리, 동그란 손·신발.
+- 팔꿈치·무릎 관절 추가(`foreL/R`, `shinL/R`). 걷기 무릎 굽힘, 앉으면 허벅지 수평·정강이 수직, 양손 책 들기, 잔을 입에 대기 포즈를 새 비율로 다시 맞춤. 잔은 팔 회전을 되돌려 늘 세워 둠.
+- 운영자 앞치마·어깨끈·공구를 새 몸통 단면에 맞춰 다시 배치. 턱수염은 턱 면을 따르는 얇은 조각으로 변경.
+- 이름표 높이(HEAD_TOP), 따라가기 카메라 높이, 읽기 모드 구도, 1인칭 숨김 기준(HEAD_Y)을 새 키에 맞춤.
+- 캡처용 디버그 `setReading`·`debugLook`과 `scripts/capture-avatar.mjs` 추가.
+- typecheck/build, 좌석 경로·정원 검사, e2e 5/5 통과. 07-avatar-* 캡처 직접 확인, 콘솔 오류 0.

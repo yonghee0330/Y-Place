@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { MANAGER_TITLE } from '../core/manager';
 import type { AvatarState, PlayerState, SharedBook } from '../net/presence';
-import { Avatar, type AvatarLook } from './avatar';
+import { Avatar, HEAD_TOP, type AvatarLook } from './avatar';
 import { blurbForTitle } from './bestsellers';
 import { BookBadge } from './bookBadge';
 import { Nameplate, OVERLAY_LAYER, bookIconTexture } from './nameplate';
@@ -270,7 +270,8 @@ export class Crowd {
         _m.compose(_v.set(p.x, 0.006, p.z), _q.identity(), _s.set(sc, 1, sc));
         this.shadows.setMatrixAt(n++, _m);
       }
-      const top = p.y + (seated ? 0.86 : 1.02);
+      // 앉으면 몸이 살짝 뒤로 기울어 머리가 조금 낮아진다
+      const top = p.y + HEAD_TOP - (seated ? 0.03 : 0);
       if (a.nameplate) {
         a.nameplate.mesh.visible = !a.hideLabel;
         a.nameplate.update(_v.set(p.x, top + 0.06, p.z), camera);
