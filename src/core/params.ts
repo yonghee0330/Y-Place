@@ -23,6 +23,10 @@ export interface Params {
   api: string;
   /** 캡처·테스트용 날씨 고정. 없으면 부천 실시간 */
   weather: 'rain' | 'snow' | 'clear' | null;
+  /** 캡처·테스트용 시각 고정(0~23, 한국 시간). 없으면 실제 시각 */
+  hour: number | null;
+  /** 테스트용: 작업 타이머의 1분을 몇 초로 셀지(기본 60) */
+  workSec: number;
 }
 
 export const DEFAULT_SEED = 86;
@@ -70,6 +74,8 @@ export function readParams(search = location.search): Params {
     cap,
     api: (q.get('api') || '').replace(/\/$/, ''),
     weather,
+    hour: q.has('hour') ? Math.min(23, Math.max(0, Math.floor(num('hour', 12)))) : null,
+    workSec: Math.min(60, Math.max(0.2, num('worksec', 60))),
   };
 }
 

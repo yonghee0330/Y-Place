@@ -40,6 +40,11 @@ export interface PortalDef {
   open?: boolean;
   /** 문 위 간판 폭(문이 나란히 붙어 있을 때 겹치지 않게 줄인다) */
   signW?: number;
+  /**
+   * 문 하나로 여러 방에 들어갈 때: 누르면 이 목록에서 고른다(간판은 label을 쓴다).
+   * 나중에 방 주인이 정해지면 고르는 대신 자기 방으로 바로 보낸다(app.ts의 resolveWorkRoom).
+   */
+  choose?: SpaceId[];
 }
 
 export interface PartitionWall {
@@ -111,10 +116,8 @@ function makeShop(): SpaceLayout {
   const spawn = { x: 0.1, z: 1.05, ry: Math.PI };
   const massageChairs = [{ x: -1.3, z: -1.42, ry: 0.12 }, { x: -0.05, z: -1.42, ry: -0.12 }];
   const sofa = { x: 0.95, z: 0.3, ry: Math.PI, w: 1.6, d: 0.8 };
-  // 오른쪽 벽에 작업실 문 네 개
-  const workDoors = WORK_IDS.map((to, i) => ({
-    to, x: 2.67, z: -1.4 + i * 0.93, ry: -Math.PI / 2, w: 0.8, d: 0.16, label: WORK_LABELS[to], signW: 0.84,
-  }));
+  // 오른쪽 벽에 '개인 작업실' 문 하나. 누르면 작업실 1~4 중에서 고른다
+  const workDoor: PortalDef = { to: 'work1', x: 2.67, z: 0.35, ry: -Math.PI / 2, w: 0.86, d: 0.16, label: '개인 작업실', choose: [...WORK_IDS] };
   return { ...emptyBase('shop', '라운지', roomOf(5.5, 4.5, 2.8)),
     openings: [{ cx: -.85, w: 2.75, y0: .65, y1: 2.45, kind: 'window' }],
     shelves: [{ x: -2.54, z: -.95, ry: Math.PI / 2, w: 1.65, wing: 'A' }],
@@ -126,7 +129,7 @@ function makeShop(): SpaceLayout {
     bench: { x: -1.2, z: 1.85, ry: Math.PI, w: 1.3, d: .4, h: .43 },
     rug: { x: -.68, z: -1.3, w: 2.5, d: 1.5 },
     floorLamps: [{ x: -1.95, z: -1.9, ry: 0 }],
-    floorPlants: [{ x: .68, z: -2, scale: .75 }, { x: 2.3, z: 1.98, scale: .7 }],
+    floorPlants: [{ x: .68, z: -2, scale: .75 }, { x: 2.3, z: 1.98, scale: .7 }, { x: 2.32, z: -1.0, scale: .85 }],
     pendants: [{ x: .95, z: -.2, drop: .6 }, { x: -1.55, z: 1.1, drop: .6 }],
     seats: [
       ...massageChairs.map((c, i) => ({ ...c, id: `massage-${i + 1}`, y: 0.47, approach: 1 as const, from: { x: c.x, z: -0.52 } })),
@@ -137,7 +140,7 @@ function makeShop(): SpaceLayout {
       { id: 'cafe-1', x: -1.2, z: 0.14, ry: 0, y: .475, approach: -1 },
     ],
     spawn, spawns: [spawn, { x: 1.45, z: 1.05, ry: Math.PI }, { x: -.45, z: .95, ry: Math.PI }],
-    portals: [{ to: 'circle', x: 1.65, z: -2.17, ry: 0, w: .86, d: .16, label: '작은 모임방' }, ...workDoors],
+    portals: [{ to: 'circle', x: 1.65, z: -2.17, ry: 0, w: .86, d: .16, label: '작은 모임방' }, workDoor],
   };
 }
 function makeCircle(): SpaceLayout {

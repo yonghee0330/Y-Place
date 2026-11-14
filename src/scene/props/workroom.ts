@@ -50,7 +50,7 @@ export function buildWorkroom(bucket: MergeBucket, rng: Rng, books: BookCollecto
   bucket.add('iron', new THREE.SphereGeometry(0.012, 10, 8), at(trs(lx + 0.06, h + 0.305, lz)));
   bucket.add('brass', new THREE.CylinderGeometry(0.007, 0.007, 0.26, 8), at(trs(lx + 0.155, h + 0.37, lz + 0.03, 0.2, 0, -0.95)));
   bucket.add('pendantShade', new THREE.CylinderGeometry(0.028, 0.085, 0.1, 20, 1, true), at(trs(lx + 0.27, h + 0.4, lz + 0.055, 0.25, 0, -0.35)));
-  bucket.add('bulb', new THREE.SphereGeometry(0.022, 12, 8), at(trs(lx + 0.275, h + 0.385, lz + 0.06)));
+  // 전구와 불빛은 work/deskFx.ts가 켜고 끈다(자리에 앉으면 켜진다)
 
   // ---- 노트북(받침 + 뒤로 젖힌 화면) ----
   const nx = -0.06 + r.range(-0.04, 0.04);

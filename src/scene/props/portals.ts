@@ -123,7 +123,7 @@ export function buildPortalGlow(portals: readonly PortalDef[] = PORTALS): Portal
     root.rotation.y = p.ry;
     root.userData.portal = p;
 
-    const name = spaceLabel(p.to);
+    const name = p.choose ? p.label : spaceLabel(p.to);
     const boardW = p.signW ? p.signW - 0.04 : Math.min(1.35, p.w + 0.45);
     const nameMat = new THREE.MeshStandardMaterial({
       map: makeNameTexture(name),

@@ -6,6 +6,10 @@ import { Sfx } from './audio/sfx';
 import { Crowd, type Actor } from './avatar/crowd';
 import { OVERLAY_LAYER } from './avatar/nameplate';
 import { BOOK_POS, HEAD_Y, HIP_Y } from './avatar/avatar';
+import { DeskFx } from './work/deskFx';
+import { WorkPanel } from './work/workPanel';
+import { kstHour } from './work/workStore';
+import { dayPhaseOf, type DayPhase } from './scene/lighting';
 import { placeAtSeat, spawnNpcs, syncNpcVisibility } from './avatar/npc';
 import { CAM_PRESETS, FollowCamera, applyPreset, createCamera } from './controls/camera';
 import { CanvasInput, isTyping } from './controls/input';
@@ -32,7 +36,7 @@ import { BookSheet } from './ui/bookSheet';
 import { DrinkSheet } from './ui/drinkSheet';
 import { drinkCooldownMs, drinkToast, isDrinkKind, type DrinkKind } from './net/drink';
 import {
-PORTALS, SEATS, SPAWN, SPAWNS, applyLayout, colliders, currentSpaceId, isWorkSpace, spaceCapacity, spaceLabel,
+PORTALS, SEATS, SPAWN, SPAWNS, WORK_DESK, applyLayout, colliders, currentSpaceId, isWorkSpace, spaceCapacity, spaceLabel,
   type PortalDef, type SpaceId,
 } from './scene/layout';
 import { buildPostFx, type PostFx } from './scene/postfx';
@@ -622,8 +626,37 @@ export async function startApp(
 
   function portalUsable(_portal: PortalDef): boolean { return true; }
 
+  // ---------- 개인 작업실 문: 문 하나로 들어가 방을 고른다 ----------
+  const roomPickSheet = new Sheet('개인 작업실', 'room-pick-sheet');
+  /**
+   * 이 문으로 들어갈 방을 정한다. 지금은 주인이 정해지지 않아 고르게 하지만,
+   * 방 주인이 정해지면 여기서 자기 방 id를 돌려주면 된다(고르는 창 없이 바로 들어간다).
+   */
+  function resolveWorkRoom(_portal: PortalDef): SpaceId | null {
+    return null;
+  }
+  function askPickRoom(portal: PortalDef): void {
+    const own = resolveWorkRoom(portal);
+    if (own) {
+      void enterSpace(own, portal);
+      return;
+    }
+    roomPickSheet.body.innerHTML = `<p class="sheet-text">들어갈 작업실을 골라 주세요. 한 방에 한 명만 들어갈 수 있어요.</p>
+      <div class="space-list" role="list">${(portal.choose ?? []).map((id) => `<button type="button" class="space-item" role="listitem" data-room="${id}">
+        <span class="space-item-name">${spaceLabel(id)}</span><span class="space-item-meta">1인용</span></button>`).join('')}</div>`;
+    roomPickSheet.body.querySelectorAll<HTMLButtonElement>('[data-room]').forEach((b) => b.addEventListener('click', () => {
+      roomPickSheet.close();
+      void enterSpace(b.dataset.room as SpaceId, portal);
+    }));
+    roomPickSheet.open();
+  }
+
   function askEnterPortal(portal: PortalDef, opts?: { fromMenu?: boolean }): void {
     if (switchingSpace || focus.active || anySheetOpen()) return;
+    if (portal.choose?.length) {
+      askPickRoom(portal);
+      return;
+    }
     if (portal.to === currentSpaceId()) return;
     if (!opts?.fromMenu && !portalUsable(portal)) return;
     const name = spaceLabel(portal.to);
@@ -660,6 +693,46 @@ export async function startApp(
   }
   rebuildHits();
 
+  // ---------- 작업실: 타이머 패널과 책상 위 사물 ----------
+  const deskFx = new DeskFx(() => reducedMotion());
+  scene.add(deskFx.group);
+  const workPanel = new WorkPanel(ui, {
+    toast: (text, action) => toasts.show(text, action ? { duration: 7000, kind: 'guide', action } : {}),
+    setDeskView: (on) => {
+      follow.setFocus(on ? deskPose() : null);
+      // 내 자리 시점에서는 내 이름표가 책상을 가리지 않게
+      me.hideLabel = on || workPanel?.focusModeOn === true;
+    },
+    setChromeHidden: (hidden) => {
+      hud.setHidden(hidden);
+      me.hideLabel = hidden || follow.focused;
+    },
+    isSeated: () => movement.seat?.id === 'desk-1',
+    secPerMin: params.workSec,
+  });
+  /** 내 자리 시점: 어깨 너머 비스듬히 위에서 책상 위(시계·노트북·스탠드)가 한눈에 보인다. */
+  function deskPose() {
+    const d = WORK_DESK;
+    // 세로 화면은 옆 서가에 카메라가 박히지 않게 책상 정면 위에서 내려다본다
+    if (camera.aspect < 0.8) {
+      return {
+        pos: new THREE.Vector3(d.x - 0.08, d.h + 1.2, d.z + 1.62),
+        look: new THREE.Vector3(d.x + 0.02, d.h + 0.02, d.z - 0.12),
+      };
+    }
+    return {
+      pos: new THREE.Vector3(d.x + 0.62, d.h + 0.78, d.z + 1.18),
+      look: new THREE.Vector3(d.x + 0.02, d.h + 0.12, d.z - 0.05),
+    };
+  }
+  /** 공간이 바뀔 때마다: 작업실이면 패널·책상 사물을 그 방 책상에 맞춘다 */
+  function syncWorkRoom(): void {
+    const space = currentSpaceId();
+    const work = isWorkSpace(space);
+    deskFx.place(work ? WORK_DESK : null);
+    workPanel.setRoom(work ? spaceLabel(space) : null);
+  }
+
   let switchingSpace = false;
   async function enterSpace(to: SpaceId, via?: PortalDef): Promise<void> {
     if (switchingSpace || to === currentSpaceId() || focus.active) return;
@@ -669,6 +742,9 @@ export async function startApp(
       me.setReadingBook(null);
     }
     movement.stop();
+    // 작업실을 나가면 진행 중인 세션을 기록하고 닫는다
+    workPanel.setRoom(null);
+    deskFx.place(null);
     store.setActiveSpace(to);
     applyLayout(to);
     store.floor = store.spaces[to].floor;
@@ -699,6 +775,13 @@ export async function startApp(
       if (isWorkSpace(to)) {
         const chair = SEATS.find((x) => x.id === 'desk-1');
         if (chair) movement.goSit(chair);
+      }
+      syncWorkRoom();
+      // 들어오면 오늘 목표·이번 할 일을 적고 시작하게 한다(캡처·테스트의 자동 입장은 건너뛴다)
+      if (isWorkSpace(to) && !params.autostart) {
+        window.setTimeout(() => {
+          if (currentSpaceId() === to && !anySheetOpen()) workPanel.invite();
+        }, 1600);
       }
       pushState(true);
       syncPeers();
@@ -868,7 +951,21 @@ export async function startApp(
 
   // ---------- 루프 ----------
   const loop = new Loop(() => fx.render(), renderer, params.debug);
+  // 실제 시각(한국 시간)에 맞춘 빛. 10분마다 다시 본다
+  const SKY_TINT: Record<DayPhase, [number, number, number]> = {
+    morning: [0.92, 1, 1.12], day: [1, 1, 1], sunset: [1.25, 0.82, 0.6], night: [0.13, 0.15, 0.24],
+  };
+  const applyDayPhase = () => {
+    const phase = dayPhaseOf(params.hour ?? kstHour());
+    store.lighting.setDayPhase(phase);
+    store.exterior.setSkyTint(...SKY_TINT[phase]);
+  };
+  applyDayPhase();
+  window.setInterval(applyDayPhase, 600_000);
+
   loop.add((dt, t) => {
+    deskFx.set(workPanel.deskState());
+    deskFx.update(dt, t, camera);
     store.exterior.update(dt);
     store.windowRain.update(dt);
     if (settings.keyboardMove && !anySheetOpen() && !focus.active) {
@@ -908,6 +1005,11 @@ export async function startApp(
   // 테스트·디버그용 조회 창구(상태 읽기와 간단한 조작만)
   (window as unknown as { __YONGSEOJEOM: unknown }).__YONGSEOJEOM = {
     me: () => myState(),
+    work: () => workPanel.debug(),
+    workBegin: (task: string, preset?: string) => workPanel.begin(task, preset),
+    workFinish: () => workPanel.finish(false),
+    workFocusMode: (on: boolean) => workPanel.setFocusMode(on),
+    workSound: () => workPanel.mixer.status(),
     toasts: () => [...toasts.log],
     peers: () => [...peers.values()].map((p) => ({ id: p.id, nickname: p.nickname, state: p.state, seatId: p.seatId, book: p.book })),
     visiblePeerAvatars: () => crowd.list('peer').filter((a) => a.root.visible && a.root.parent).map((a) => ({ id: a.id, nickname: a.nickname, nameplate: !!a.nameplate?.mesh.visible })),

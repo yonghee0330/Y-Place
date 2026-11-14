@@ -76,3 +76,55 @@ test('작업실 네 곳: 들어가면 책상 의자에 앉고, 한 명만 들어
  expect(await page.evaluate(()=> (window as any).__YONGSEOJEOM.toasts().join(' '))).toContain('라운지로 돌아왔어요');
  expect(errors).toEqual([]);
 });
+
+test('개인 작업실 문은 하나: 누르면 1~4를 고르고, 고른 방에 들어간다', async ({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.goto('/?autostart=1&npc=0&quality=low&presence=local&weather=clear&room=e2e-door&cam=overview&campos=0,1.6,1.8&camtgt=1,1,-2');
+ await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);
+ const doors=await page.evaluate(()=> (window as any).__YONGSEOJEOM.portals().filter((p:any)=>p.choose));
+ expect(doors).toHaveLength(1);
+ expect(doors[0].label).toBe('개인 작업실');
+ const p=doors[0];
+ await page.evaluate((p)=> (window as any).__YONGSEOJEOM.cameraAt([0.4,1.5,0.35],[p.x,1.2,p.z]),p);
+ const xy=await page.evaluate((p)=> (window as any).__YONGSEOJEOM.project(p.x,1.1,p.z),p);
+ await page.mouse.click(xy.x,xy.y);
+ const sheet=page.locator('#room-pick-sheet');
+ await expect(sheet).toBeVisible();
+ await expect(sheet.locator('[data-room]')).toHaveCount(4);
+ await sheet.locator('[data-room="work3"]').click();
+ await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe('work3');
+ expect(errors).toEqual([]);
+});
+
+test('작업 세션: 시작하면 타이머가 돌고, 마치면 오늘 기록에 쌓인다', async ({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ // 1분을 0.5초로 센다
+ await page.goto('/?autostart=1&npc=0&quality=low&presence=local&weather=clear&room=e2e-timer&worksec=0.5');
+ await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);
+ await page.evaluate(()=> (window as any).__YONGSEOJEOM.enterSpace('work1'));
+ await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().seatId)).toBe('desk-1');
+ await expect(page.locator('.work-panel')).toBeVisible();
+ // 앉기 의식: 할 일을 적고 25/5로 시작
+ await page.locator('.work-panel [data-act="sit"]').click();
+ await expect(page.locator('#work-ritual')).toBeVisible();
+ await page.locator('#work-ritual [data-goal]').first().fill('테스트 원고 쓰기');
+ await page.locator('#wp-task').fill('1장 초고');
+ await page.locator('#work-ritual [data-act="start"]').click();
+ await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.work().phase)).toBe('focus');
+ // 25분(=12.5초) 뒤 저절로 휴식으로 넘어간다
+ await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.work().phase),{timeout:30_000}).toBe('break');
+ // 집중 모드: 다른 화면 요소가 숨는다
+ await page.evaluate(()=> (window as any).__YONGSEOJEOM.workFocusMode(true));
+ await expect(page.locator('.hud')).toHaveClass(/is-hidden/);
+ await page.evaluate(()=> (window as any).__YONGSEOJEOM.workFocusMode(false));
+ await page.locator('.work-panel [data-act="finish"]').click();
+ await expect(page.locator('#work-review')).toBeVisible();
+ await page.locator('#work-review [data-result] [data-v="done"]').click();
+ await page.locator('#work-review [data-focus] [data-v="4"]').click();
+ await page.locator('#work-review [data-act="save"]').click();
+ const w=await page.evaluate(()=> (window as any).__YONGSEOJEOM.work());
+ expect(w.phase).toBe('idle');
+ expect(w.sessions).toBe(1);
+ expect(w.todaySec).toBeGreaterThanOrEqual(25*60);
+ expect(errors).toEqual([]);
+});

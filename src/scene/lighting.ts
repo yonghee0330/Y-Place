@@ -16,9 +16,28 @@ export interface Lighting {
   applyQuality(q: QualityProfile): void;
   setWeather(kind: WeatherKind): void;
   setSpaceMood(space: SpaceId): void;
+  setDayPhase(p: DayPhase): void;
 }
 
 const WARM = 0xffb873;
+
+export type DayPhase = 'morning' | 'day' | 'sunset' | 'night';
+
+/** 한국 시간의 시(0~23)를 시간대로 */
+export function dayPhaseOf(hour: number): DayPhase {
+  if (hour >= 6 && hour < 10) return 'morning';
+  if (hour >= 10 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 20) return 'sunset';
+  return 'night';
+}
+
+/** 시간대별 빛: 창으로 드는 빛의 색·세기, 하늘빛 세기, 실내 조명 보강 */
+const DAY_LOOK: Record<DayPhase, { key: number; hemi: number; keyK: number; hemiK: number; fillK: number }> = {
+  morning: { key: 0xdce8f6, hemi: 0xeef2f6, keyK: 0.9, hemiK: 0.95, fillK: 0.9 },
+  day: { key: 0xffffff, hemi: 0xffefd9, keyK: 1, hemiK: 1, fillK: 1 },
+  sunset: { key: 0xffae6b, hemi: 0xffdcb8, keyK: 0.85, hemiK: 0.85, fillK: 1.1 },
+  night: { key: 0x6f7fa8, hemi: 0xd9c3a6, keyK: 0.07, hemiK: 0.5, fillK: 1.25 },
+};
 
 export function buildLighting(
   renderer: THREE.WebGLRenderer,
@@ -97,6 +116,7 @@ export function buildLighting(
   let lastQ = q;
   let weather: WeatherKind = 'rain';
   let mood: SpaceId = 'shop';
+  let dayPhase: DayPhase = 'day';
 
   /** 활성 공간의 램프 앵커에 PointLight·Spot을 맞춘다. */
   const syncSpaceLamps = (space: SpaceId) => {
@@ -175,6 +195,23 @@ export function buildLighting(
     scene.environmentIntensity = 0.25;
     patchMat.opacity = circle ? 0 : 0.1;
     for (const p of patches) p.visible = !circle;
+    // 실제 시각(한국 시간): 아침은 차갑게, 해질녘은 주황빛, 밤은 창빛이 꺼지고 실내 조명이 주인공
+    const d = DAY_LOOK[dayPhase];
+    if (dayPhase !== 'day') {
+      key.color.setHex(d.key);
+      hemi.color.setHex(d.hemi);
+      patchMat.color.setHex(d.key);
+    }
+    key.intensity *= d.keyK;
+    hemi.intensity *= circle ? 1 - (1 - d.hemiK) * 0.5 : d.hemiK;
+    scene.environmentIntensity *= d.hemiK;
+    patchMat.opacity *= d.keyK;
+    roomFill.intensity *= d.fillK;
+    // 창 없는 안쪽 방도 밤에는 방 전체 빛을 줄여 스탠드·펜던트가 주인공이 되게
+    if (circle && dayPhase === 'night') {
+      roomFill.intensity *= 0.55;
+      hemi.intensity *= 0.7;
+    }
   };
 
   const applyQuality = (qq: QualityProfile) => {
@@ -214,5 +251,11 @@ export function buildLighting(
     applyQuality(lastQ);
   };
 
-  return { group, applyQuality, setWeather, setSpaceMood };
+  const setDayPhase = (p: DayPhase) => {
+    if (p === dayPhase) return;
+    dayPhase = p;
+    applyQuality(lastQ);
+  };
+
+  return { group, applyQuality, setWeather, setSpaceMood, setDayPhase };
 }

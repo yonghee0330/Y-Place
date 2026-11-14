@@ -90,3 +90,11 @@
 - 입장 자리를 뒷벽에서 1.2m 떼고 소파를 앞으로 당겨 데스크톱 입장 시 아바타가 보이게 함(처음엔 숨겨져서 수정).
 - 검사: typecheck/build, `test:layout`(6개 공간 좌석 접근·경로), `test:presence`(정원 8·6·1), e2e 6/6(작업실 자동 착석·1명 제한·라운지 복귀 테스트 추가). 캡처 `09-*`·`10-entry-*` 직접 확인, 콘솔 오류 0.
 - Supabase: 이 저장소는 Actions 시크릿이 없어 공개 사이트가 같은 브라우저 탭끼리만 보이는 Local 모드로 돈다. 비북스-M의 "경로 한 번 보내기" 동기화는 아직 옮기지 않았다(Supabase를 붙일 때 함께 옮길 것).
+
+### 2026-11-14 — 개인 작업실 문 하나 + 작업실 집중 기능
+- 라운지 문 4개 → **"개인 작업실" 문 하나**. 누르면 작업실 1~4를 고르는 창(`room-pick-sheet`). 방 주인이 정해지면 `resolveWorkRoom()`에서 바로 분기.
+- 새 모듈 `src/work/`: `workStore.ts`(기록·목표·주차장·믹서 설정, localStorage), `workPanel.ts`(앉기 의식·타이머·휴식·회고·딴생각·소리·기록·집중 모드), `soundMixer.ts`(Web Audio 합성 5종 + 종소리), `deskFx.ts`(탁상시계 진행 링·집중 팻말·스탠드 불빛·먼지·머그잔 김).
+- 시간대 조명(`lighting.ts` `setDayPhase`, `exterior.ts` `setSkyTint`), `?hour=`·`?worksec=` 테스트 파라미터.
+- 내 자리 시점(타이머 시작 시 카메라가 책상으로), 모바일은 정면 위 시점.
+- 검사: typecheck/build, test:layout 6공간, test:presence, e2e 8/8(문 선택·타이머 세션 기록 추가). 캡처 `11-*` 직접 확인, 콘솔 오류 0.
+- 기획 프롬프트에서 뺀 것과 이유는 `DECISIONS.md`.

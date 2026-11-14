@@ -10,6 +10,8 @@ export interface Exterior {
   /** @deprecated setWeather 사용 */
   setRain(count: number): void;
   setWeather(kind: WeatherKind, particleBudget: number): void;
+  /** 시간대 하늘빛(아침·해질녘·밤) */
+  setSkyTint(r: number, g: number, b: number): void;
 }
 
 export function buildExterior(rng: Rng, rainCount: number): Exterior {
@@ -107,12 +109,32 @@ export function buildExterior(rng: Rng, rainCount: number): Exterior {
     geom.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   };
 
+  /** 시간대에 따른 하늘빛 배율(낮 1,1,1) */
+  let skyTint: [number, number, number] = [1, 1, 1];
+  const paintSky = () => {
+    if (mode === 'clear') skyMat.color.setRGB(1.85, 1.75, 1.55);
+    else if (mode === 'snow') skyMat.color.setRGB(1.65, 1.7, 1.78);
+    else skyMat.color.setRGB(1.5, 1.5, 1.5);
+    skyMat.color.r *= skyTint[0];
+    skyMat.color.g *= skyTint[1];
+    skyMat.color.b *= skyTint[2];
+  };
+  const setSkyTint = (r: number, g: number, b: number) => {
+    skyTint = [r, g, b];
+    paintSky();
+    // 지붕·나무도 하늘빛을 따라 어두워진다(밤에도 실루엣은 보이게 30% 아래로는 내리지 않는다)
+    group.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined;
+      if (!mat || mat === skyMat || !(mat instanceof THREE.MeshBasicMaterial)) return;
+      const base = (mat.userData.baseColor ??= mat.color.clone()) as THREE.Color;
+      mat.color.setRGB(base.r * Math.max(0.3, r), base.g * Math.max(0.3, g), base.b * Math.max(0.34, b));
+    });
+  };
+
   const setWeather = (kind: WeatherKind, particleBudget: number) => {
     mode = kind;
     // 하늘 톤
-    if (kind === 'clear') skyMat.color.setRGB(1.85, 1.75, 1.55);
-    else if (kind === 'snow') skyMat.color.setRGB(1.65, 1.7, 1.78);
-    else skyMat.color.setRGB(1.5, 1.5, 1.5);
+    paintSky();
 
     // 길 반사(비·눈은 젖은 느낌, 맑음은 덜 반짝)
     const roadMat = road.material as THREE.MeshStandardMaterial;
@@ -190,5 +212,5 @@ export function buildExterior(rng: Rng, rainCount: number): Exterior {
       o.receiveShadow = false;
     }
   });
-  return { group, update, setRain, setWeather };
+  return { group, update, setRain, setWeather, setSkyTint };
 }
