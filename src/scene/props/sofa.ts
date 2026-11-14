@@ -38,7 +38,7 @@ export function buildSofa(bucket: MergeBucket, rng: Rng): void {
     add(bevelBox(cw - 0.02, 0.4, 0.15, 0.065, 5), trs(cx, seatTop + 0.19, -d / 2 + 0.25, -0.2, r.range(-0.03, 0.03)), 1 + r.range(-0.03, 0.03));
   }
   // 담요: 오른쪽 쿠션 위에 펼쳐져 앞 모서리로 흘러내림
-  bucket.add('blanket', blanket(r), at(trs(innerW / 2 - cw * 0.55, seatTop + 0.004, 0.0, 0, 0.12)));
+  bucket.add('blanket', blanket(r), at(trs(innerW / 2 - cw * 0.55, seatTop + 0.016, 0.02, 0, 0.12)));
   // 작은 쿠션(장식) 하나
   add(bevelBox(0.36, 0.34, 0.12, 0.08, 5), trs(-innerW / 2 + 0.22, seatTop + 0.17, -d / 2 + 0.37, -0.35, 0.3), 0.7);
 }

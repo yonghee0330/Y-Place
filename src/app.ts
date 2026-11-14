@@ -32,7 +32,7 @@ import { BookSheet } from './ui/bookSheet';
 import { DrinkSheet } from './ui/drinkSheet';
 import { drinkCooldownMs, drinkToast, isDrinkKind, type DrinkKind } from './net/drink';
 import {
-PORTALS, SEATS, SPAWN, SPAWNS, applyLayout, colliders, currentSpaceId, spaceCapacity, spaceLabel,
+PORTALS, SEATS, SPAWN, SPAWNS, applyLayout, colliders, currentSpaceId, isWorkSpace, spaceCapacity, spaceLabel,
   type PortalDef, type SpaceId,
 } from './scene/layout';
 import { buildPostFx, type PostFx } from './scene/postfx';
@@ -694,7 +694,12 @@ export async function startApp(
         if (to !== 'shop') await enterSpace('shop');
         return;
       }
-      toasts.show(to === 'shop' ? `${spaceLabel(to)}으로 돌아왔어요` : `${spaceLabel(to)}에 들어왔어요`);
+      toasts.show(to === 'shop' ? `${spaceLabel(to)}로 돌아왔어요` : `${spaceLabel(to)}에 들어왔어요`);
+      // 1인 작업실은 들어오면 바로 책상 의자로 가서 앉는다
+      if (isWorkSpace(to)) {
+        const chair = SEATS.find((x) => x.id === 'desk-1');
+        if (chair) movement.goSit(chair);
+      }
       pushState(true);
       syncPeers();
     } finally {

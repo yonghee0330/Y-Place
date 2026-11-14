@@ -5,7 +5,7 @@ Object.assign(globalThis,{window:globalThis,addEventListener:()=>{},removeEventL
 const clients:LocalPresence[]=[];
 function state(id:string):PlayerState{return {id,nickname:id,color:'#78806a',hair:'short',position:[0,0,0],rotationY:0,state:'stand',seatId:null,book:null,role:null,t:Date.now()};}
 try {
- for(const [room,capacity] of [['shop',8],['circle',6]] as const){
+ for(const [room,capacity] of [['shop',8],['circle',6],['work1',1]] as const){
   const active:LocalPresence[]=[];
   for(let i=0;i<capacity+1;i++){
    const c=new LocalPresence(capacity);clients.push(c);active.push(c);

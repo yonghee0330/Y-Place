@@ -71,7 +71,7 @@ export function buildPortals(bucket: MergeBucket): void {
     wood('walnut', bevelBox(p.w + frame * 2 + 0.08, 0.04, 0.28, 0.008), 'x', at(trs(0, 0.02, 0.06)));
     wood('walnut', bevelBox(p.w + frame * 2 + 0.16, 0.01, 0.42, 0.004), 'x', at(trs(0, 0.005, 0.1)));
     // 간판 받침 나무판
-    const boardW = Math.min(1.45, p.w + 0.5);
+    const boardW = p.signW ?? Math.min(1.45, p.w + 0.5);
     wood('walnut', bevelBox(boardW, 0.28, 0.05, 0.006), 'x', at(trs(0, 2.48, 0.04)));
 
     // 열린 문(1인실 등): 문짝 없이 문틀만 — 등 뒤로 밖이 보임
@@ -124,7 +124,7 @@ export function buildPortalGlow(portals: readonly PortalDef[] = PORTALS): Portal
     root.userData.portal = p;
 
     const name = spaceLabel(p.to);
-    const boardW = Math.min(1.35, p.w + 0.45);
+    const boardW = p.signW ? p.signW - 0.04 : Math.min(1.35, p.w + 0.45);
     const nameMat = new THREE.MeshStandardMaterial({
       map: makeNameTexture(name),
       roughness: 0.85,

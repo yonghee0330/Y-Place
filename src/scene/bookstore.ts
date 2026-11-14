@@ -23,6 +23,9 @@ import { buildCeiling, buildFloor, buildWalls } from './props/room';
 import { buildShelves } from './props/shelf';
 import { buildRug, buildSofa } from './props/sofa';
 import { buildWallDecor } from './props/wallDecor';
+import { buildCoffeeCorner, buildCoffeeMenu } from './props/coffee';
+import { buildMassageChairs } from './props/massage';
+import { buildWorkroom } from './props/workroom';
 import { buildWindows } from './props/windows';
 import { buildPartitions, buildWingbackArmchair } from './props/zones';
 import { buildWindowRain, type WindowRain } from './windowRain';
@@ -47,7 +50,7 @@ export interface Bookstore {
   stats: { books: number; planks: number };
 }
 
-const NO_SHADOW = new Set(['contactShadow', 'bulb', 'lampShade', 'subfloor', 'rug', 'paper', 'sign', 'painting1', 'painting2']);
+const NO_SHADOW = new Set(['contactShadow', 'bulb', 'lampShade', 'subfloor', 'rug', 'paper', 'sign', 'painting1', 'painting2', 'beanJar', 'screen']);
 
 function buildOneSpace(
   id: SpaceId,
@@ -97,6 +100,9 @@ function buildOneSpace(
   buildBench(bucket, rng, books);
   buildCoffeeTable(bucket, rng, books);
   buildRug(bucket);
+  buildMassageChairs(bucket, rng);
+  buildCoffeeCorner(bucket, rng);
+  buildWorkroom(bucket, rng.fork(`${id}-work`), books);
   buildPortals(bucket);
   buildContactShadows(bucket);
   const lamps = buildLamps(bucket);
@@ -110,6 +116,8 @@ function buildOneSpace(
   group.add(books.build(mats.bookCover as THREE.MeshStandardMaterial, mats.bookPages));
   group.add(portalGlow.group);
   group.add(buildIdentity());
+  const menu = buildCoffeeMenu();
+  if (menu) group.add(menu);
   const floor = group.getObjectByName('merged:floor')!;
   floor.name = `merged:floor:${id}`;
   return {

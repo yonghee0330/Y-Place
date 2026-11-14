@@ -57,6 +57,15 @@ export function createMaterials(rng: Rng): Materials {
     bookCover: new THREE.MeshStandardMaterial({ map: tex.spineAtlas(rng.fork('spine')), roughness: 0.7 }),
     bookPages: new THREE.MeshStandardMaterial({ map: tex.pageEdgeTexture(), roughness: 0.95 }),
     bookend: std({ color: 0x3a3a36, metalness: 0.7, roughness: 0.45 }),
+    // 안마 의자: 크림색 껍데기, 짙은 갈색 가죽, 어두운 홈
+    massageShell: std({ color: 0xd8cbb4, roughness: 0.42, metalness: 0.05 }),
+    massageLeather: new THREE.MeshStandardMaterial({ map: tex.fabricTexture(rng.fork('massage'), '#5a4034'), roughness: 0.62, vertexColors: true }),
+    massageDark: std({ color: 0x2a2623, roughness: 0.6, metalness: 0.15 }),
+    // 커피 도구: 스테인리스, 반투명 유리병
+    steel: std({ color: 0xc8c8c2, metalness: 0.85, roughness: 0.32 }),
+    beanJar: new THREE.MeshStandardMaterial({ color: 0xd9e2df, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }),
+    // 노트북 화면(은은히 빛남)
+    screen: new THREE.MeshStandardMaterial({ color: 0x93a8a6, emissive: 0x8fb0ac, emissiveIntensity: 0.22, roughness: 0.4 }),
     // 가구 밑 접지 그림자(알파 텍스처)
     contactShadow: new THREE.MeshBasicMaterial({
       color: 0x1a120b, alphaMap: tex.contactShadowTexture(), transparent: true, opacity: 0.8,

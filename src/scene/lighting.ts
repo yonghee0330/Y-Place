@@ -166,7 +166,7 @@ export function buildLighting(
 
   const applyMood = () => {
     syncSpaceLamps(mood);
-    const circle = mood === 'circle';
+    const circle = mood !== 'shop'; // 창 없는 안쪽 방(모임방·작업실)
     roomFill.intensity = circle ? 2.8 : 1.8;
     key.intensity = circle ? 0.35 : (lastQ.shadows ? 1.1 : 0.65);
     hemi.intensity = circle ? 0.85 : 0.8;

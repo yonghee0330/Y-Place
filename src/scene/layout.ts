@@ -1,9 +1,16 @@
 import { Rng } from '../core/rng';
-// Y-Place과 작은 모임방. 가구·이동·클릭이 공유하는 공간 데이터.
+// Y-Place: 라운지(쉬어 가는 홀)·작은 모임방·1인 작업실 4개. 가구·이동·클릭이 공유하는 공간 데이터.
 // x: 왼쪽(-)→오른쪽(+), z: 뒤 창벽(-)→앞 입구(+). 단위 m, 바닥 y=0.
 // 빌드·전환 시 applyLayout()으로 활성 공간 상수를 맞춘다.
 
-export type SpaceId = 'shop' | 'circle';
+export type WorkId = 'work1' | 'work2' | 'work3' | 'work4';
+/** 'shop'은 라운지다(방문자 저장값·채널 이름을 지키려고 옛 id를 그대로 쓴다). */
+export type SpaceId = 'shop' | 'circle' | WorkId;
+export const WORK_IDS: WorkId[] = ['work1', 'work2', 'work3', 'work4'];
+const WORK_LABELS: Record<WorkId, string> = { work1: '작업실 1', work2: '작업실 2', work3: '작업실 3', work4: '작업실 4' };
+export function isWorkSpace(id: SpaceId): id is WorkId {
+  return (WORK_IDS as SpaceId[]).includes(id);
+}
 
 export interface RoomBounds {
   w: number; d: number; h: number;
@@ -31,6 +38,8 @@ export interface PortalDef {
   w: number; d: number;
   /** true면 문짝 없이 문틀만 생성 */
   open?: boolean;
+  /** 문 위 간판 폭(문이 나란히 붙어 있을 때 겹치지 않게 줄인다) */
+  signW?: number;
 }
 
 export interface PartitionWall {
@@ -61,6 +70,14 @@ export interface SpaceLayout {
   /** 창가 바테이블(높은 테이블) */
   barTable: (Placement & { w: number; d: number; h: number }) | null;
   counter: (Placement & { w: number; d: number; h: number }) | null;
+  /** 안마 의자(앉은 사람은 +z) */
+  massageChairs: Placement[];
+  /** 커피 코너 수납장 카운터(손님 쪽이 +z) */
+  coffeeBar: (Placement & { w: number; d: number; h: number }) | null;
+  /** 커피 코너의 작은 원형 테이블 */
+  cafeTable: { x: number; z: number; r: number; h: number } | null;
+  /** 1인 작업실 책상(앉는 쪽이 +z) */
+  workDesk: (Placement & { w: number; d: number; h: number }) | null;
   floorLamps: Placement[];
   pendants: { x: number; z: number; drop: number }[];
   floorPlants: { x: number; z: number; scale: number }[];
@@ -85,36 +102,42 @@ function emptyBase(id: SpaceId, label: string, room: RoomBounds): Omit<SpaceLayo
     partitions: [],
     sofa: null, coffeeTable: null, rug: null, bench: null, barTable: null, counter: null,
     armchairs: [], sideTable: null, roundTable: null, readingTable: null, storeTable: null, storeChairs: [],
+    massageChairs: [], coffeeBar: null, cafeTable: null, workDesk: null,
   };
 }
 
 function makeShop(): SpaceLayout {
-  // 뒷벽에서 1.2m 이상 떨어져야 따라가기 카메라가 아바타 뒤에 설 자리가 생긴다
+  // 라운지(쉬어 가는 홀). 뒷벽에서 1.2m 이상 떨어져야 따라가기 카메라가 아바타 뒤에 설 자리가 생긴다
   const spawn = { x: 0.1, z: 1.05, ry: Math.PI };
-  const armchairs = [{ x: -1.25, z: -1.48, ry: .18 }, { x: .12, z: -1.48, ry: -.25 }];
-  return { ...emptyBase('shop', 'Y-Place', roomOf(5.5, 4.5, 2.8)),
+  const massageChairs = [{ x: -1.3, z: -1.42, ry: 0.12 }, { x: -0.05, z: -1.42, ry: -0.12 }];
+  const sofa = { x: 0.95, z: 0.3, ry: Math.PI, w: 1.6, d: 0.8 };
+  // 오른쪽 벽에 작업실 문 네 개
+  const workDoors = WORK_IDS.map((to, i) => ({
+    to, x: 2.67, z: -1.4 + i * 0.93, ry: -Math.PI / 2, w: 0.8, d: 0.16, label: WORK_LABELS[to], signW: 0.84,
+  }));
+  return { ...emptyBase('shop', '라운지', roomOf(5.5, 4.5, 2.8)),
     openings: [{ cx: -.85, w: 2.75, y0: .65, y1: 2.45, kind: 'window' }],
-    shelves: [
-      {x:-2.54,z:-.95,ry:Math.PI/2,w:1.65,wing:'A'},
-      {x:-2.54,z:.75,ry:Math.PI/2,w:1.65,wing:'B'},
-      {x:2.53,z:-.25,ry:-Math.PI/2,w:2.35,wing:'C',rail:true},
-    ],
-    islands: [{x:-.2,z:.08,ry:0,w:1.65,d:.8,h:.62,kind:'flat'}], chairs: [], armchairs,
-    sideTable: {x:-.58,z:-1.65,ry:0,r:.23,h:.52},
-    counter: {x:1.65,z:1.73,ry:Math.PI,w:1.45,d:.52,h:.94},
-    bench: {x:-1.35,z:1.78,ry:Math.PI,w:1.4,d:.4,h:.43},
-    rug: {x:-.65,z:-1.25,w:2.05,d:1.1},
-    floorLamps: [{x:-1.95,z:-1.85,ry:0}],
-    floorPlants: [{x:.65,z:-2,scale:.75},{x:2.32,z:1.16,scale:.7}],
-    pendants: [{x:-.25,z:.05,drop:.65},{x:1.5,z:1.4,drop:.55}],
+    shelves: [{ x: -2.54, z: -.95, ry: Math.PI / 2, w: 1.65, wing: 'A' }],
+    islands: [], chairs: [], massageChairs, sofa,
+    coffeeTable: { x: 0.95, z: -0.82, ry: 0, w: 0.8, d: 0.4, h: 0.4 },
+    coffeeBar: { x: -2.47, z: 0.95, ry: Math.PI / 2, w: 1.5, d: 0.5, h: 0.9 },
+    cafeTable: { x: -1.2, z: 0.72, r: 0.3, h: 0.68 },
+    sideTable: { x: -.68, z: -1.75, ry: 0, r: .2, h: .5 },
+    bench: { x: -1.2, z: 1.85, ry: Math.PI, w: 1.3, d: .4, h: .43 },
+    rug: { x: -.68, z: -1.3, w: 2.5, d: 1.5 },
+    floorLamps: [{ x: -1.95, z: -1.9, ry: 0 }],
+    floorPlants: [{ x: .68, z: -2, scale: .75 }, { x: 2.3, z: 1.98, scale: .7 }],
+    pendants: [{ x: .95, z: -.2, drop: .6 }, { x: -1.55, z: 1.1, drop: .6 }],
     seats: [
-      ...armchairs.map((c,i)=>({...c,id:`read-${i+1}`,y:.43,approach:1 as const,from:{x:c.x,z:-.85}})),
-      {id:'counter-1',x:1.68,z:1.05,ry:0,y:.72,approach:-1},
-      {id:'bench-1',x:-1.7,z:1.78,ry:Math.PI,y:.49,approach:1},
-      {id:'bench-2',x:-1,z:1.78,ry:Math.PI,y:.49,approach:1},
+      ...massageChairs.map((c, i) => ({ ...c, id: `massage-${i + 1}`, y: 0.47, approach: 1 as const, from: { x: c.x, z: -0.52 } })),
+      // 소파는 창 쪽(-z)을 본다
+      ...[0.42, 0, -0.42].map((dx, i) => ({ id: `sofa-${i + 1}`, x: sofa.x + dx, z: sofa.z - 0.09, ry: Math.PI, y: 0.49, approach: 1 as const })),
+      { id: 'bench-1', x: -1.52, z: 1.85, ry: Math.PI, y: .49, approach: 1 },
+      { id: 'bench-2', x: -.88, z: 1.85, ry: Math.PI, y: .49, approach: 1 },
+      { id: 'cafe-1', x: -1.2, z: 0.14, ry: 0, y: .475, approach: -1 },
     ],
-    spawn, spawns: [spawn,{x:.85,z:.65,ry:Math.PI},{x:-1.4,z:.65,ry:0}],
-    portals: [{ to: 'circle', x: 1.65, z: -2.17, ry: 0, w: .86, d: .16, label: '작은 모임방' }],
+    spawn, spawns: [spawn, { x: 1.45, z: 1.05, ry: Math.PI }, { x: -.45, z: .95, ry: Math.PI }],
+    portals: [{ to: 'circle', x: 1.65, z: -2.17, ry: 0, w: .86, d: .16, label: '작은 모임방' }, ...workDoors],
   };
 }
 function makeCircle(): SpaceLayout {
@@ -137,11 +160,33 @@ function makeCircle(): SpaceLayout {
     floorLamps: [], floorPlants: [{x: -1.7, z: -0.7, scale: 0.8}],
     pendants: [{ x: 0, z: 0, drop: 0.65 }],
     spawn, spawns: [spawn, { x: 1.45, z: 0.95, ry: Math.PI }],
-    portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: 'Y-Place' }],
+    portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: '라운지' }],
   };
 }
-export const SPACE_LAYOUTS: Record<SpaceId, SpaceLayout> = { shop: makeShop(), circle: makeCircle() };
-export const SPACE_ORDER: SpaceId[] = ['shop', 'circle'];
+/** 1인 작업실. 방마다 책상 위치·소품이 조금씩 다르다(n = 1..4). */
+function makeWork(id: WorkId, n: number): SpaceLayout {
+  const r = new Rng(4100 + n * 37);
+  const deskX = 0.3 + r.range(-0.05, 0.08);
+  const spawn = { x: -0.55, z: 0.3, ry: Math.PI };
+  return { ...emptyBase(id, WORK_LABELS[id], roomOf(2.8, 3.2, 2.6)),
+    openings: [],
+    shelves: [{ x: 1.18, z: 0.45 + r.range(-0.1, 0.1), ry: -Math.PI / 2, w: 1.0, wing: 'C' }],
+    islands: [], chairs: [],
+    workDesk: { x: deskX, z: -1.22, ry: 0, w: 1.25, d: 0.62, h: 0.73 },
+    rug: { x: deskX, z: -0.45, w: 1.5, d: 1.25 },
+    seats: [{ id: 'desk-1', x: deskX - 0.08, z: -0.62, ry: Math.PI, y: 0.475, approach: -1 }],
+    floorLamps: n % 2 ? [{ x: -1.08, z: 1.2, ry: 0 }] : [],
+    floorPlants: [n % 2 ? { x: 1.05, z: 1.3, scale: 0.7 } : { x: -1.05, z: 1.25, scale: 0.75 }],
+    pendants: [{ x: deskX - 0.1, z: -0.4, drop: 0.5 }],
+    spawn, spawns: [spawn],
+    portals: [{ to: 'shop', x: -0.85, z: -1.52, ry: 0, w: 0.8, d: 0.16, label: '라운지' }],
+  };
+}
+export const SPACE_LAYOUTS: Record<SpaceId, SpaceLayout> = {
+  shop: makeShop(), circle: makeCircle(),
+  work1: makeWork('work1', 1), work2: makeWork('work2', 2), work3: makeWork('work3', 3), work4: makeWork('work4', 4),
+};
+export const SPACE_ORDER: SpaceId[] = ['shop', 'circle', ...WORK_IDS];
 
 // ---------- 활성 레이아웃(빌드·내비·클릭이 읽음) ----------
 let activeId: SpaceId = 'shop';
@@ -156,7 +201,7 @@ export function currentSpace(): SpaceLayout {
 }
 
 /** 공간별 최대 인원. 차면 들어올 수 없다. */
-export const SPACE_CAPACITY: Record<SpaceId, number> = { shop: 8, circle: 6 };
+export const SPACE_CAPACITY: Record<SpaceId, number> = { shop: 8, circle: 6, work1: 1, work2: 1, work3: 1, work4: 1 };
 
 export function spaceCapacity(id: SpaceId = activeId): number {
   return SPACE_CAPACITY[id];
@@ -195,6 +240,10 @@ export function applyLayout(id: SpaceId): SpaceLayout {
   assignOrClear(BENCH, L.bench);
   assignOrClear(BAR_TABLE, L.barTable);
   assignOrClear(COUNTER, L.counter);
+  MASSAGE_CHAIRS.splice(0, MASSAGE_CHAIRS.length, ...L.massageChairs);
+  assignOrClear(COFFEE_BAR, L.coffeeBar);
+  assignOrClear(CAFE_TABLE, L.cafeTable);
+  assignOrClear(WORK_DESK, L.workDesk);
   PORTALS.splice(0, PORTALS.length, ...L.portals);
   return L;
 }
@@ -244,6 +293,10 @@ export const RUG = { ...HUB.rug! };
 export const BENCH: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
 export const BAR_TABLE: Placement & { w: number; d: number; h: number } = { ...(HUB.barTable!) };
 export const COUNTER: Placement & { w: number; d: number; h: number } = { ...(HUB.counter!) };
+export const MASSAGE_CHAIRS: Placement[] = [];
+export const COFFEE_BAR = { _empty: true } as unknown as NonNullable<SpaceLayout['coffeeBar']>;
+export const CAFE_TABLE = { _empty: true } as unknown as NonNullable<SpaceLayout['cafeTable']>;
+export const WORK_DESK = { _empty: true } as unknown as NonNullable<SpaceLayout['workDesk']>;
 export const FLOOR_LAMPS: Placement[] = [...HUB.floorLamps];
 export const PENDANTS: { x: number; z: number; drop: number }[] = [...HUB.pendants];
 export const FLOOR_PLANTS: { x: number; z: number; scale: number }[] = [...HUB.floorPlants];
@@ -302,10 +355,18 @@ export function colliders(): Collider[] {
   // 全 좌석: 의자 방석 높이의 개별 클릭 상자. 큰 가구가 뒷좌석 클릭을 가리지 않는다.
   for (const seat of SEATS) rect(seat.x, seat.z, 0.44, 0.44, seat.ry, seat.y + 0.04, [seat.id]);
   if (isPresent(SOFA)) {
-    const sofaIds = SEATS.filter((s) => s.id.startsWith('sofa-')).map((s) => s.id);
-    void sofaIds;
+    // 소파 등받이는 지나갈 수 없다(앉는 자리는 좌석 상자가 따로 있다)
+    const off = SOFA.d / 2 - 0.1;
+    rect(SOFA.x - Math.sin(SOFA.ry) * off, SOFA.z - Math.cos(SOFA.ry) * off, SOFA.w, 0.2, SOFA.ry, 0.8);
   }
   if (isPresent(COUNTER)) rect(COUNTER.x, COUNTER.z, COUNTER.w, COUNTER.d, COUNTER.ry, COUNTER.h);
+  if (isPresent(COFFEE_BAR)) rect(COFFEE_BAR.x, COFFEE_BAR.z, COFFEE_BAR.w, COFFEE_BAR.d, COFFEE_BAR.ry, COFFEE_BAR.h);
+  if (isPresent(CAFE_TABLE)) rect(CAFE_TABLE.x, CAFE_TABLE.z, CAFE_TABLE.r * 2, CAFE_TABLE.r * 2, 0, CAFE_TABLE.h);
+  if (isPresent(WORK_DESK)) rect(WORK_DESK.x, WORK_DESK.z, WORK_DESK.w, WORK_DESK.d, WORK_DESK.ry, WORK_DESK.h);
+  // 안마 의자: 앉는 자리(좌석 상자) 양옆의 몸통과 등받이는 지나갈 수 없다
+  for (const m of MASSAGE_CHAIRS) {
+    rect(m.x - Math.sin(m.ry) * 0.42, m.z - Math.cos(m.ry) * 0.42, 0.84, 0.36, m.ry, 1.25);
+  }
   if (isPresent(BENCH)) {
     const ids = SEATS.filter((s) => s.id.startsWith('bench-')).map((s) => s.id);
     void ids;

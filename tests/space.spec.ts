@@ -28,13 +28,13 @@ test('모임방 5개 좌석을 실제 클릭해서 각각 앉고 중앙을 바�
  expect(errors).toEqual([]);
 });
 
-test('용서점 창가·벤치·스툴 다섯 자리에 클릭으로 도달한다', async ({page})=>{
+test('라운지 안마 의자·소파·벤치·카페 여덟 자리에 클릭으로 도달한다', async ({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto('/?cam=overview&campos=0,2.65,0&camtgt=0,0,-.001&npc=0&quality=low&presence=local&weather=clear');
  await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);
  await page.evaluate(()=> (window as any).__YONGSEOJEOM.cameraAt([0,2.65,0],[0,0,-.001],100));
  const seats=await page.evaluate(()=> (window as any).__YONGSEOJEOM.seats());
- expect(seats).toHaveLength(5);
+ expect(seats.map((s:any)=>s.id)).toEqual(['massage-1','massage-2','sofa-1','sofa-2','sofa-3','bench-1','bench-2','cafe-1']);
  for(const seat of seats){
    console.log("클릭 시작:",seat.id);
    const point=await page.evaluate((s)=> (window as any).__YONGSEOJEOM.project(s.x,s.y+.03,s.z),seat);
@@ -46,6 +46,33 @@ test('용서점 창가·벤치·스툴 다섯 자리에 클릭으로 도달한�
    await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().state)).toBe('sit');
    console.log('착석 확인:',seat.id);
  }
- await page.screenshot({animations:'disabled',path:'docs/screens/05-shop-seats.png'});
+ await page.screenshot({animations:'disabled',path:'docs/screens/09-lounge-seats.png'});
+ expect(errors).toEqual([]);
+});
+
+test('작업실 네 곳: 들어가면 책상 의자에 앉고, 한 명만 들어갈 수 있고, 문으로 라운지에 돌아온다', async ({context,page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.goto('/?npc=0&quality=low&presence=local&weather=clear&autostart=1&room=e2e-work');
+ await page.waitForFunction(()=>window.__YONGSEOJEOM_READY);
+ for(const id of ['work1','work2','work3','work4']){
+   await page.evaluate((to)=> (window as any).__YONGSEOJEOM.enterSpace(to),id);
+   await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe(id);
+   await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().seatId)).toBe('desk-1');
+   await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.me().state)).toBe('sit');
+ }
+ // 작업실 4에 내가 있는 동안 다른 사람은 못 들어온다
+ const visitor=await context.newPage();
+ await visitor.goto('/?npc=0&quality=low&presence=local&weather=clear&autostart=1&room=e2e-work');
+ await visitor.waitForFunction(()=>window.__YONGSEOJEOM_READY);
+ await visitor.evaluate(()=> (window as any).__YONGSEOJEOM.enterSpace('work4'));
+ await expect.poll(()=>visitor.evaluate(()=> (window as any).__YONGSEOJEOM.toasts().join(' '))).toContain('자리가 다 찼어요');
+ await expect.poll(()=>visitor.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe('shop');
+ // 빈 작업실에는 들어갈 수 있다
+ await visitor.evaluate(()=> (window as any).__YONGSEOJEOM.enterSpace('work2'));
+ await expect.poll(()=>visitor.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe('work2');
+ await visitor.close();
+ await page.evaluate(()=> (window as any).__YONGSEOJEOM.enterSpace('shop'));
+ await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe('shop');
+ expect(await page.evaluate(()=> (window as any).__YONGSEOJEOM.toasts().join(' '))).toContain('라운지로 돌아왔어요');
  expect(errors).toEqual([]);
 });
