@@ -12,6 +12,8 @@ const T = DRINK_TIMING;
 // 앉기: 허벅지를 앞으로 거의 수평, 무릎을 굽혀 정강이를 수직으로
 const SIT_THIGH = 1.5;
 const SIT_KNEE = 1.5;
+/** 미니미 한 걸음 길이(m) */
+const STRIDE = 0.34;
 // 팔 포즈(어깨 x·z 회전, 팔꿈치 굽힘). 오른팔 기준 z, 왼팔은 부호 반대.
 /** 양손으로 가슴 앞에 책 들기 */
 const READ = { x: -0.3, z: 0.28, elbow: -1.5 };
@@ -125,6 +127,8 @@ export class AvatarAnimator {
   private sitW = 0;
   private readW = 0;
   private phase = 0;
+  private lastYaw = 0;
+  private turnLean = 0;
   private bowT = -1;
   private sipT = -1;
   private sipKind: DrinkKind = 'water';
@@ -168,10 +172,16 @@ export class AvatarAnimator {
     this.time += dt;
     const walking = this.state === 'walk';
     const reading = this.state === 'read';
-    this.walkW = damp(this.walkW, walking ? 1 : 0, 10, dt);
+    // 걸음 세기는 실제 속도를 따른다: 출발·정지 때 팔다리 폭이 함께 줄었다 늘었다 한다.
+    const walkTarget = walking ? THREE.MathUtils.clamp(this.speed / 0.75, 0.3, 1) : 0;
+    this.walkW = damp(this.walkW, walkTarget, 8, dt);
     this.sitW = damp(this.sitW, this.seated ? 1 : 0, 7, dt);
     this.readW = damp(this.readW, reading ? 1 : 0, 6, dt);
-    this.phase += dt * (6 + this.speed * 5) * (walking ? 1 : 0.3);
+    // 걸음 박자 = 이동 거리 ÷ 보폭. 발이 바닥에서 미끄러지지 않게 속도에 맞춘다.
+    // 멈출 땐 다음 발이 땅에 닿는 자세(위상 0·π)로 천천히 마무리한다.
+    if (walking || this.walkW > 0.05) {
+      this.phase += dt * Math.max(walking ? 5 : 0, (this.speed / STRIDE) * Math.PI);
+    }
 
     const swing = Math.sin(this.phase) * this.walkW;
     const stride = Math.cos(this.phase) * this.walkW;
@@ -181,7 +191,13 @@ export class AvatarAnimator {
     a.body.position.y = HIP_Y + Math.abs(Math.sin(this.phase)) * 0.02 * this.walkW;
     a.body.scale.set(1 - breath * 0.004, 1 + breath * 0.008, 1 - breath * 0.004);
     a.body.rotation.x = -0.07 * this.sitW + 0.04 * this.walkW;
-    a.body.rotation.z = Math.sin(this.phase) * 0.025 * this.walkW;
+    // 돌 때 안쪽으로 살짝 기울기(회전 속도 기준)
+    const yaw = a.root.rotation.y;
+    let dyaw = yaw - this.lastYaw;
+    dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+    this.lastYaw = yaw;
+    this.turnLean = damp(this.turnLean, dt > 0 ? THREE.MathUtils.clamp(-dyaw / dt * 0.035, -0.09, 0.09) * this.walkW : 0, 6, dt);
+    a.body.rotation.z = Math.sin(this.phase) * 0.025 * this.walkW + this.turnLean;
     a.body.rotation.y = Math.sin(this.phase) * 0.06 * this.walkW;
 
     // 다리: 허벅지 흔들기 + 앞으로 나가는 다리의 무릎 굽힘. 앉으면 허벅지 수평, 정강이 수직.

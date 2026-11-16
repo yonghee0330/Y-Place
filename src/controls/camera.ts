@@ -42,7 +42,9 @@ export function applyPreset(cam: THREE.PerspectiveCamera, preset: CamPreset): TH
 
 
 const DEG = Math.PI / 180;
-const MIN_PITCH = 12 * DEG, MAX_PITCH = 62 * DEG;
+const MIN_PITCH = 6 * DEG, MAX_PITCH = 74 * DEG;
+/** 벽·가구 때문에 뒤로 못 물러날 때 이 각도까지 위로 올라가 내려다본다 */
+const LIFT_PITCH = 58 * DEG;
 export const MIN_DIST = 1.35;
 
 /** 현재 방 크기에 맞는 최대 오빗 거리 — 방 대각선의 ~38%, 허브도 크게 나가지 않음. */
@@ -80,13 +82,32 @@ export class FollowCamera {
 
   /** 따라갈 점 */
   follow(p: THREE.Vector3, snap = false): void {
-    this.goal.set(p.x * .75, p.y + this.lookHeight, p.z * .65);
-    if (snap) this.target.copy(this.goal);
+    // 아바타를 정확히 중심에 두어야 어느 방향으로 돌려도 아바타를 축으로 공간이 돈다
+    this.goal.set(p.x, p.y + this.lookHeight, p.z);
+    if (snap) {
+      this.target.copy(this.goal);
+      this.colDist = Infinity;
+      this.lift = 0;
+    }
   }
 
+  /** 드래그 회전. 손을 떼면 짧게 관성으로 미끄러지며 멈춘다. */
   rotate(dx: number, dy: number): void {
-    this.yaw -= dx * 0.006;
+    const now = performance.now();
+    const gap = Math.max(8, now - this.lastDrag);
+    this.lastDrag = now;
+    const yawStep = -dx * 0.006;
+    this.yaw += yawStep;
     this.pitch = THREE.MathUtils.clamp(this.pitch + dy * 0.005, MIN_PITCH, MAX_PITCH);
+    // 관성 속도(rad/s). 이벤트 간격이 길면 멈췄다가 놓은 것으로 본다.
+    this.yawVel = gap < 80 ? THREE.MathUtils.clamp(yawStep / (gap / 1000), -6, 6) : 0;
+  }
+
+  /** 키보드(Q·E) 연속 회전. dir: -1 왼쪽, 1 오른쪽 */
+  spin(dir: number, dt: number): void {
+    if (!dir) return;
+    this.yaw += dir * 1.9 * dt;
+    this.yawVel = 0;
   }
 
   zoom(factor: number): void {
@@ -115,47 +136,53 @@ export class FollowCamera {
   private focusPose: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null;
   private focusBlend = 0;
   private lastFocus: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null;
+  /** 벽·가구로 줄어든 실제 거리(부드럽게 변함) */
+  private colDist = Infinity;
+  /** 뒤가 막혔을 때 위로 올라가는 정도(0..1, 부드럽게 변함) */
+  private lift = 0;
+  private yawVel = 0;
+  private lastDrag = 0;
 
   update(dt: number): void {
     const k = (rate: number) => (this.reducedMotion ? 1 : 1 - Math.exp(-rate * dt));
     const maxD = maxOrbitDist();
     // 방이 바뀌었거나 줌이 한도를 넘으면 끌어당긴다
     if (this.distance > maxD) this.distance = maxD;
-    this.target.lerp(this.goal, k(6));
-    const dy = Math.atan2(Math.sin(this.yaw - this.shown.yaw), Math.cos(this.yaw - this.shown.yaw));
-    this.shown.yaw += dy * k(7);
-    this.shown.pitch += (this.pitch - this.shown.pitch) * k(7);
-    this.shown.dist += (this.distance - this.shown.dist) * k(6);
-    const dir = new THREE.Vector3(
-      Math.sin(this.shown.yaw) * Math.cos(this.shown.pitch),
-      Math.sin(this.shown.pitch),
-      Math.cos(this.shown.yaw) * Math.cos(this.shown.pitch),
-    );
-    // 벽·천장 + 가구. 등 뒤 서가·소파가 시야를 가리면 카메라를 앞으로 당김(전 공간 공통)
-    const slack = 0.12;
-    const wallHit = roomExit(this.target, dir, slack) - 0.22;
-    const furnHit = furnitureExit(this.target, dir, this.shown.dist) - 0.42;
-    const hit = Math.min(wallHit, furnHit);
-    let d = Math.min(this.shown.dist, Math.max(0.65, hit));
-    // 작은 방의 벽 앞 좌석에서는 뒤로 물러설 수 없다. 빈 방향을 찾아
-    // 아바타 머리 안으로 파고드는 대신 방 안쪽에서 좌석을 바라본다.
-    if (d < 1.25 && !this.focusPose) {
-      let bestYaw = this.shown.yaw;
-      let bestPitch = this.shown.pitch;
-      const bestDir = dir.clone();
-      for (const offset of [Math.PI/3, -Math.PI/3, Math.PI/2, -Math.PI/2, Math.PI]) {
-        const yaw = this.shown.yaw + offset;
-        const pitch = Math.max(this.shown.pitch, 38 * DEG);
-        const candidate = new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch), Math.sin(pitch), Math.cos(yaw)*Math.cos(pitch));
-        const available = Math.min(this.shown.dist, roomExit(this.target,candidate,slack)-.22, furnitureExit(this.target,candidate,this.shown.dist)-.42);
-        if (available > d + .2) { d=available; bestYaw=yaw; bestPitch=pitch; bestDir.copy(candidate); }
-      }
-      if (bestYaw !== this.shown.yaw) {
-        this.yaw = this.shown.yaw = bestYaw;
-        this.pitch = this.shown.pitch = bestPitch;
-        dir.copy(bestDir);
-      }
+    // 손을 뗀 뒤 관성 회전(드래그 중에는 rotate가 매번 덮어씀)
+    if (performance.now() - this.lastDrag > 60 && Math.abs(this.yawVel) > 0.01 && !this.reducedMotion) {
+      this.yaw += this.yawVel * dt;
+      this.yawVel *= Math.exp(-5 * dt);
+    } else if (performance.now() - this.lastDrag > 60) {
+      this.yawVel = 0;
     }
+    this.target.lerp(this.goal, k(7));
+    const dy = Math.atan2(Math.sin(this.yaw - this.shown.yaw), Math.cos(this.yaw - this.shown.yaw));
+    this.shown.yaw += dy * k(9);
+    this.shown.pitch += (this.pitch - this.shown.pitch) * k(9);
+    this.shown.dist += (this.distance - this.shown.dist) * k(6);
+
+    // 벽·천장 + 가구까지 남은 거리
+    const slack = 0.12;
+    let wallFree = Infinity;
+    const room = (pitch: number, out: THREE.Vector3) => {
+      out.set(Math.sin(this.shown.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.shown.yaw) * Math.cos(pitch));
+      wallFree = roomExit(this.target, out, slack) - 0.22;
+      return Math.min(wallFree, furnitureExit(this.target, out, this.shown.dist) - 0.42);
+    };
+    const dir = new THREE.Vector3();
+    const want = this.shown.dist;
+    // 뒤가 막혀 있으면 방향을 휙 바꾸지 않고, 그 자리에서 위로 올라가 내려다본다
+    const free0 = room(this.shown.pitch, dir);
+    const liftGoal = this.focusPose ? 0 : THREE.MathUtils.clamp((Math.min(want, 1.75) - free0) / 1.1, 0, 1);
+    this.lift += (liftGoal - this.lift) * k(liftGoal > this.lift ? 6 : 2.5);
+    const pitch = THREE.MathUtils.lerp(this.shown.pitch, Math.max(this.shown.pitch, LIFT_PITCH), this.lift);
+    const free = room(pitch, dir);
+    const hitD = Math.min(want, Math.max(0.65, free));
+    // 막힐 땐 빠르게 당기고, 트일 땐 천천히 물러난다(카메라가 툭툭 튀지 않게)
+    if (!Number.isFinite(this.colDist)) this.colDist = hitD;
+    this.colDist += (hitD - this.colDist) * k(hitD < this.colDist ? 12 : 3);
+    // 벽 밖으로는 절대 나가지 않게 즉시 막고, 가구 가림은 위 감쇠로만 따라간다(가장자리를 지날 때 튀지 않게)
+    const d = Math.min(this.colDist, Math.max(0.65, wallFree));
     const orbitPos = this.target.clone().addScaledVector(dir, d);
     // 방 안에 남도록 한 번 더 클램프
     clampInsideRoom(orbitPos, 0.2);

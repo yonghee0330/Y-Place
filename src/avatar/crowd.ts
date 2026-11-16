@@ -129,8 +129,10 @@ export class Actor {
 
   updateSpeed(dt: number): void {
     const p = this.root.position;
-    const v = dt > 0 ? Math.hypot(p.x - this.lastPos.x, p.z - this.lastPos.z) / dt : 0;
-    this.avatar.anim.speed = Math.min(2, v);
+    const v = dt > 0 ? Math.min(2, Math.hypot(p.x - this.lastPos.x, p.z - this.lastPos.z) / dt) : 0;
+    // 프레임마다 튀는 측정값을 걸러 다리 박자가 흔들리지 않게 한다(순간이동은 무시)
+    const anim = this.avatar.anim;
+    anim.speed += (v - anim.speed) * (1 - Math.exp(-12 * dt));
     this.lastPos.copy(p);
   }
 }

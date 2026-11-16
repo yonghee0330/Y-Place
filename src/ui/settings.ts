@@ -79,7 +79,7 @@ export class SettingsSheet {
       </fieldset>
       <label class="field field-row toggle"><span>모션 줄이기</span><input type="checkbox" data-set="reducedMotion" /></label>
       <label class="field field-row toggle"><span>NPC 독자 표시</span><input type="checkbox" data-set="npc" /></label>
-      <label class="field field-row toggle"><span>키보드로 걷기 (WASD·방향키)</span><input type="checkbox" data-set="keyboardMove" /></label>
+      <label class="field field-row toggle"><span>키보드로 걷기 (WASD·방향키) · Q·E 시점 회전</span><input type="checkbox" data-set="keyboardMove" /></label>
       <p class="field-note">설정은 이 브라우저에만 저장돼요.</p>`;
 
     b.querySelectorAll<HTMLButtonElement>('[data-q]').forEach((btn) =>

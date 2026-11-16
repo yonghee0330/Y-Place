@@ -974,6 +974,7 @@ export async function startApp(
     } else {
       movement.keyInput.set(0, 0);
     }
+    if (!fixedCam && !anySheetOpen() && !focus.active && !follow.focused) follow.spin(input.spinAxis(), dt);
     movement.cameraYaw = follow.viewYaw;
     movement.update(dt);
     if (movement.moving) pushState();

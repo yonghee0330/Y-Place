@@ -61,7 +61,7 @@ await c.close();
 const f = await open('&autostart=1');
 await f.waitForTimeout(1500);
 await shot(f, 'follow');
-await Y(f, () => window.__YONGSEOJEOM.sit('read-1'));
+await Y(f, () => window.__YONGSEOJEOM.sit('sofa-1'));
 await f.waitForFunction(() => window.__YONGSEOJEOM.me().state === 'sit', {}, { timeout: 60000 });
 await f.waitForTimeout(1500);
 await shot(f, 'follow-sit');
