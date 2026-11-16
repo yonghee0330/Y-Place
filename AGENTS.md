@@ -1,3 +1,3 @@
 # 용서점 작업 원칙
 
-한국어로 소통하고 커밋한다. 원본 저장소는 수정하지 않는다. 공간은 여섯 곳이다: 라운지(`shop`, 쉬어 가는 홀)·작은 모임방(`circle`)·1인 작업실 4개(`work1`~`work4`, 정원 1명). 공통 규칙은 `/Users/mac/Documents/AI-작업물-색인/METAVERSE-SPACE-RULES.md`를 따른다. 사진을 참고해 절차 모델링하며 외부 에셋을 다운로드하지 않는다. 가정은 README에 기록한다. 각 단계는 typecheck/build, 실제 스크린샷 확인, PROGRESS 기록 후 커밋한다.
+한국어로 소통하고 커밋한다. 원본 저장소는 수정하지 않는다. 성격은 **메타공간 실험실**(2026-11-17)이다. 공간은 아홉 곳: 실험실 로비(`shop`, 옛 id 유지)·책방 실험실(`bookshop`)·서재(`library`)·작은 모임방(`circle`)·전시실(`gallery`)·1인 작업실 4개(`work1`~`work4`, 정원 1명). 서비스 기능은 방마다 따로 시험하고, 비북스-M에 옮길 때는 먼저 묻는다. 공통 규칙은 `/Users/mac/Documents/AI-작업물-색인/METAVERSE-SPACE-RULES.md`를 따른다. 사진을 참고해 절차 모델링하며 외부 에셋을 다운로드하지 않는다. 가정은 README에 기록한다. 각 단계는 typecheck/build, 실제 스크린샷 확인, PROGRESS 기록 후 커밋한다.

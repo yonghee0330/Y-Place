@@ -118,7 +118,7 @@ export async function startApp(
     me.accent = MANAGER_COLOR;
   }
   const npcs = spawnNpcs(crowd, rng);
-  // 말 걸 수 있는 NPC(라운지 바리스타·모임방 모임지기)
+  // 말 걸 수 있는 NPC(로비 바리스타·모임방 모임지기)
   const talkNpcs = spawnTalkNpcs(crowd);
   const talkNpcOn = new URLSearchParams(location.search).get('talknpc') !== '0';
   /** 디버그: 내 아바타를 가까이서 보는 카메라 오프셋 */

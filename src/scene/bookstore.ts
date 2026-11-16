@@ -1,4 +1,5 @@
 // 서점 장면 조립. 허브 + 포털 서브룸을 각각 그룹으로 만들고, 활성 공간만 보이게 한다.
+import { buildGallery } from './props/gallery';
 import * as THREE from 'three';
 import type { QualityProfile } from '../core/quality';
 import { Rng } from '../core/rng';
@@ -95,7 +96,7 @@ function buildOneSpace(
   ARMCHAIRS.forEach((c,i)=>buildWingbackArmchair(bucket,rng.fork(`armchair-${i}`),trs(c.x,0,c.z,0,c.ry)));
   buildBarTable(bucket, rng, books);
   buildCounter(bucket, rng, books);
-  if (id === 'shop') buildCounterStool(bucket, rng);
+  if (id === 'bookshop') buildCounterStool(bucket, rng);
   buildSofa(bucket, rng);
   buildBench(bucket, rng, books);
   buildCoffeeTable(bucket, rng, books);
@@ -103,6 +104,7 @@ function buildOneSpace(
   buildMassageChairs(bucket, rng);
   buildCoffeeCorner(bucket, rng);
   buildWorkroom(bucket, rng.fork(`${id}-work`), books);
+  group.add(buildGallery(bucket, rng.fork(`${id}-gallery`)));
   buildPortals(bucket);
   buildContactShadows(bucket);
   const lamps = buildLamps(bucket);

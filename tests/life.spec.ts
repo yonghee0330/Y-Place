@@ -6,8 +6,9 @@ test('나무 문 클릭으로 두 공간을 왕복한다',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
  await page.goto(url+'&cam=overview&campos=0,1.6,1.8&camtgt=1,1,-2');await ready(page);
  for(const target of ['circle','shop','circle','shop']){
-  const p=await page.evaluate(()=> (window as any).__YONGSEOJEOM.portals()[0]);
-  await page.evaluate((p)=> (window as any).__YONGSEOJEOM.cameraAt([0,1.65,.5],[p.x,1.3,p.z]),p);
+  // 지금 방에서 target으로 가는 문을 찾아, 그 문 앞 2.2m에서 바라본다
+  const p=await page.evaluate((t)=> (window as any).__YONGSEOJEOM.portals().find((d:any)=>d.to===t),target);
+  await page.evaluate((p)=> (window as any).__YONGSEOJEOM.cameraAt([p.x+Math.sin(p.ry)*2.2,1.65,p.z+Math.cos(p.ry)*2.2],[p.x,1.3,p.z]),p);
   const xy=await page.evaluate((p)=> (window as any).__YONGSEOJEOM.project(p.x,1.2,p.z),p);
   console.log("문 클릭",target,xy);
   await page.mouse.click(xy.x,xy.y);
@@ -59,4 +60,26 @@ test('만석인 모임방 입장을 거절하고 용서점으로 복귀한다',a
  await expect.poll(()=>visitor.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe('shop');
  expect(await visitor.evaluate(()=> (window as any).__YONGSEOJEOM.toasts().join(' '))).toContain('자리가 다 찼어요');
  await visitor.close();
+});
+
+test('실험실 로비 문으로 책방·서재·전시실에 들어갔다가 로비 문으로 돌아온다',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.goto(url+'&cam=overview');await ready(page);
+ const clickDoor=async(to:string)=>{
+  const p=await page.evaluate((t)=> (window as any).__YONGSEOJEOM.portals().find((d:any)=>d.to===t),to);
+  expect(p).toBeTruthy();
+  await page.evaluate((p)=> (window as any).__YONGSEOJEOM.cameraAt([p.x+Math.sin(p.ry)*2.2,1.65,p.z+Math.cos(p.ry)*2.2],[p.x,1.3,p.z]),p);
+  const xy=await page.evaluate((p)=> (window as any).__YONGSEOJEOM.project(p.x,1.2,p.z),p);
+  await page.mouse.click(xy.x,xy.y);
+  await expect(page.locator('#portal-sheet')).toBeVisible();
+  await page.locator('#portal-sheet [data-act="enter"]').click();
+  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe(to);
+  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.switchingSpace())).toBe(false);
+ };
+ for(const room of ['bookshop','library','gallery']){
+  await clickDoor(room);
+  console.log('들어감',room);
+  await clickDoor('shop');
+ }
+ expect(errors).toEqual([]);
 });

@@ -1,4 +1,4 @@
-// 말 걸 수 있는 NPC: 라운지 바리스타·모임방 모임지기. 가까이 가면 대화할 수 있고,
+// 말 걸 수 있는 NPC: 로비 바리스타·모임방 모임지기. 가까이 가면 대화할 수 있고,
 // 근처에 있는 동안 고개(몸)를 방문자 쪽으로 돌린다.
 import * as THREE from 'three';
 import type { TalkNpcId } from '../net/npcChat';
@@ -18,7 +18,7 @@ export interface TalkNpcDef {
 
 export const TALK_NPCS: TalkNpcDef[] = [
   // 커피 코너 앞, 방 안쪽을 보고 선다
-  { id: 'barista', name: '바리스타 모카', space: 'shop', x: -1.9, z: 1.25, ry: Math.PI / 2, color: '#6b4a32', hair: 'bob' },
+  { id: 'barista', name: '바리스타 모카', space: 'shop', x: -4.1, z: 0.95, ry: Math.PI / 2, color: '#6b4a32', hair: 'bob' },
   // 모임방 서가 옆, 테이블을 본다
   { id: 'host', name: '모임지기 소담', space: 'circle', x: 0.95, z: -1.55, ry: Math.atan2(-0.95, 1.55), color: '#5b8a5a', hair: 'short' },
 ];
