@@ -862,3 +862,39 @@ button.pill:hover { background: rgba(36, 37, 31, 0.72); }
   .wp-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .work-panel { transition: none; } }
+
+/* ---------- NPC 대화 ---------- */
+.talk-prompt {
+  position: absolute; left: 50%; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 78px); transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px;
+  background: rgba(192, 138, 78, 0.92); color: #fff; font: 600 14px/1 var(--sans); cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); white-space: nowrap; max-width: calc(100vw - 32px);
+  animation: talk-in 0.25s ease;
+}
+.talk-prompt:hover { background: rgba(170, 118, 60, 0.95); }
+.talk-prompt .icon { width: 18px; height: 18px; }
+@keyframes talk-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+.chat-sheet { width: min(460px, calc(100vw - 32px)); }
+.chat-sheet .sheet-body { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
+.chat-note { margin: 0; font-size: 12px; line-height: 1.5; color: #7a6a55; }
+.chat-log {
+  display: flex; flex-direction: column; gap: 8px; min-height: 160px; max-height: 42dvh; overflow-y: auto;
+  padding: 4px 2px; overscroll-behavior: contain;
+}
+.chat-msg { margin: 0; max-width: 85%; padding: 10px 14px; border-radius: 18px; line-height: 1.55; font-size: 14px; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.chat-npc { align-self: flex-start; background: #fff; border: 1px solid rgba(36, 37, 31, 0.1); border-bottom-left-radius: 6px; }
+.chat-me { align-self: flex-end; background: var(--green); color: var(--paper); border-bottom-right-radius: 6px; }
+.chat-typing { display: inline-flex; gap: 4px; padding: 14px; }
+.chat-typing span { width: 6px; height: 6px; border-radius: 50%; background: #b9a68a; animation: pulse 1s ease-in-out infinite; }
+.chat-typing span:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing span:nth-child(3) { animation-delay: 0.3s; }
+.chat-form { display: flex; gap: 8px; position: sticky; bottom: 0; background: var(--paper); padding-top: 4px; }
+.chat-input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 14px; border: 1px solid rgba(36, 37, 31, 0.18); border-radius: 999px;
+  background: #fff; color: var(--green); font: 400 16px/1 var(--sans);
+}
+.chat-send:disabled { opacity: 0.5; cursor: default; }
+/* 데스크톱: 대화 창을 오른쪽에 두어 NPC와 내 아바타가 가운데에 보이게 */
+@media (min-width: 900px) {
+  .sheet-backdrop:has(.chat-sheet) { place-items: center end; padding-right: max(24px, env(safe-area-inset-right)); background: rgba(20, 18, 14, 0.12); }
+}

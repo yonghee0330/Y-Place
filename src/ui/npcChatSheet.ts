@@ -1,0 +1,108 @@
+// NPC와 대화하는 창. 방문자 말 → NPC 답(Claude 또는 안내 답). 대화는 이 탭 메모리에만 남는다.
+import { askNpc, npcChatIsAi, type ChatTurn, type TalkNpcId } from '../net/npcChat';
+import { Sheet } from './sheet';
+
+const GREETING: Record<TalkNpcId, string> = {
+  barista: '어서 오세요, 바리스타 모카예요. 공간 안내든 쉬어 가는 이야기든 편하게 물어봐 주세요.',
+  host: '반가워요, 모임지기 소담이에요. 책 이야기나 이 방 이야기, 무엇이든 좋아요.',
+};
+
+export class NpcChatSheet {
+  private sheet = new Sheet('', 'npc-chat-sheet');
+  private log: HTMLElement;
+  private form: HTMLFormElement;
+  private input: HTMLInputElement;
+  private send: HTMLButtonElement;
+  private histories = new Map<TalkNpcId, ChatTurn[]>();
+  private npc: TalkNpcId | null = null;
+  private busy = false;
+  /** 답을 받으면 말풍선처럼 NPC 머리 위에 잠깐 보여 줄 수 있게 알린다 */
+  onReply: ((npc: TalkNpcId, text: string) => void) | null = null;
+
+  constructor() {
+    this.sheet.el.classList.add('chat-sheet');
+    const ai = npcChatIsAi();
+    this.sheet.body.innerHTML = `
+      <p class="chat-note">${ai
+        ? '답은 Claude(AI)가 만들어요. 보낸 말은 답을 만드는 데만 쓰이고 저장하지 않아요. 이름·연락처 같은 개인정보는 적지 말아 주세요.'
+        : '지금은 짧은 안내 답만 할 수 있어요. 개인정보는 적지 말아 주세요.'}</p>
+      <div class="chat-log" role="log" aria-live="polite" aria-label="대화 내용"></div>
+      <form class="chat-form" autocomplete="off">
+        <input class="chat-input" type="text" maxlength="200" placeholder="물어보고 싶은 걸 적어 주세요" aria-label="NPC에게 보낼 말" enterkeyhint="send" />
+        <button class="btn btn-primary chat-send" type="submit">보내기</button>
+      </form>`;
+    this.log = this.sheet.body.querySelector('.chat-log')!;
+    this.form = this.sheet.body.querySelector('.chat-form')!;
+    this.input = this.sheet.body.querySelector('.chat-input')!;
+    this.send = this.sheet.body.querySelector('.chat-send')!;
+    this.form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      void this.submit();
+    });
+    this.sheet.onClose = () => { this.npc = null; };
+  }
+
+  get isOpen(): boolean {
+    return this.sheet.isOpen;
+  }
+
+  get talkingTo(): TalkNpcId | null {
+    return this.isOpen ? this.npc : null;
+  }
+
+  open(npc: TalkNpcId, name: string): void {
+    this.npc = npc;
+    this.sheet.el.querySelector('.sheet-title')!.textContent = name;
+    if (!this.histories.has(npc)) this.histories.set(npc, [{ role: 'assistant', content: GREETING[npc] }]);
+    this.render();
+    this.sheet.open();
+    this.input.focus();
+  }
+
+  close(): void {
+    if (this.sheet.isOpen) this.sheet.close();
+  }
+
+  private render(): void {
+    const h = this.npc ? this.histories.get(this.npc) ?? [] : [];
+    this.log.replaceChildren(
+      ...h.map((t) => {
+        const p = document.createElement('p');
+        p.className = `chat-msg chat-${t.role === 'user' ? 'me' : 'npc'}`;
+        p.textContent = t.content;
+        return p;
+      }),
+    );
+    if (this.busy) {
+      const p = document.createElement('p');
+      p.className = 'chat-msg chat-npc chat-typing';
+      p.setAttribute('aria-label', '답을 쓰는 중');
+      p.innerHTML = '<span></span><span></span><span></span>';
+      this.log.appendChild(p);
+    }
+    this.log.scrollTop = this.log.scrollHeight;
+  }
+
+  private async submit(): Promise<void> {
+    const npc = this.npc;
+    const text = this.input.value.trim();
+    if (!npc || !text || this.busy) return;
+    const h = this.histories.get(npc)!;
+    h.push({ role: 'user', content: text });
+    this.input.value = '';
+    this.busy = true;
+    this.send.disabled = true;
+    this.render();
+    const reply = await askNpc(npc, h);
+    h.push({ role: 'assistant', content: reply.text });
+    // 탭 메모리도 너무 길어지지 않게
+    if (h.length > 40) h.splice(0, h.length - 40);
+    this.busy = false;
+    this.send.disabled = false;
+    if (this.npc === npc) {
+      this.render();
+      this.input.focus();
+    }
+    this.onReply?.(npc, reply.text);
+  }
+}

@@ -36,6 +36,8 @@ jobs:
           VITE_MANAGER_CODE: ${{ secrets.VITE_MANAGER_CODE }}
           VITE_BGM_YOUTUBE_ID: ${{ vars.VITE_BGM_YOUTUBE_ID }}
           VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          # NPC 대화 Worker 주소(공개 주소라 Variables). 비우면 브라우저 안 안내 답으로만 동작.
+          VITE_NPC_CHAT_URL: ${{ vars.VITE_NPC_CHAT_URL }}
         run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

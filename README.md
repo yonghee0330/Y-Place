@@ -23,6 +23,10 @@ Node 22.12 이상에서 `npm ci` 후 `npm run dev`로 실행합니다. 배포 �
 
 운영자 입장은 `VITE_MANAGER_CODE`를 지정했을 때만 표시됩니다. 닉네임은 ‘Y-Place 운영자’입니다. 정적 사이트에 포함되는 외형 전환용 코드이므로 보안 인증이나 비밀 데이터 접근 수단으로 사용하면 안 됩니다. 예전 서비스의 코드나 클라우드 계정은 복사하지 않았습니다.
 
+### NPC 대화 (2026-11-17)
+
+라운지 커피 코너의 **바리스타 모카**, 작은 모임방의 **모임지기 소담**에게 가까이 가면(1.7m) "이야기하기" 버튼이 뜹니다. NPC를 눌러도 앞까지 걸어가서 대화 창이 열립니다. 답은 Claude가 만들고, API 키는 `worker/npc-chat`(Cloudflare Worker)에만 둡니다. `VITE_NPC_CHAT_URL`이 비어 있거나 서버가 실패하면 브라우저 안의 짧은 안내 답으로 내려갑니다. 대화 내용은 그 탭 메모리에만 있고 저장하지 않습니다. 방문자끼리의 채팅은 여전히 없습니다. 설정 방법은 [worker/npc-chat/README.md](worker/npc-chat/README.md).
+
 ## 배포
 
 GitHub 저장소의 Pages Source를 GitHub Actions로 설정합니다. `main` 푸시 시 `.github/workflows/deploy.yml`이 의존성 설치·타입 검사·빌드 후 Pages로 배포합니다. 선택 환경변수는 workflow에 명시된 Secrets/Variables로 설정합니다. 경로는 상대 경로이므로 `/yongseojeom/` 아래에서도 동작합니다.

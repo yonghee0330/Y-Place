@@ -115,3 +115,12 @@
 
 - 검사: typecheck/build, test:layout, test:presence, e2e 8/8. 캡처 `12-orbit-{shop,circle}-{0,90,180,270}`·`12-walk` 직접 확인, 8방향 모두 `meVisible() === true`, 콘솔 오류 0.
 - `capture-avatar.mjs`의 착석 자리 `read-1`(라운지 재구성으로 없어짐) → `sofa-1`. 이 스크립트의 고정 카메라 좌표는 새 라운지 배치와 맞지 않아 걷기 컷이 빈 화면이 됨(남은 정리 거리).
+
+### 2026-11-17 — NPC 대화(바리스타 모카·모임지기 소담)
+- 범위 변경(운영자 승인): NPC와의 대화만 허용, 사람끼리 채팅은 계속 없음. `DECISIONS.md`·규칙 문서 4장에 기록.
+- `src/avatar/talkNpc.ts`: 라운지 커피 코너 앞 바리스타, 모임방 서가 옆 모임지기. 3m 안에서는 방문자 쪽으로 돌아봄. 1.7m 안이면 "…와/과 이야기하기" 버튼, NPC를 누르면 앞까지 걸어가 대화 창을 엶. 2.6m 넘게 멀어지면 창이 닫힘. 'NPC 독자 표시' 설정과 별개로 기본 표시(`?talknpc=0`이면 숨김).
+- `src/ui/npcChatSheet.ts`·`style.css`: 대화 창(말풍선, 답 쓰는 중 표시, 200자 입력, AI·저장 안 함·개인정보 안내). 데스크톱은 오른쪽에 붙여 NPC가 가운데 보이게. 대화를 열면 카메라가 내 어깨 너머로 NPC를 봄.
+- `src/net/npcChat.ts`: Worker로 최근 12턴 전송, 20초 시간 제한. 주소가 없거나 실패·429면 키워드 안내 답(`?npcchat=local`로 강제).
+- `worker/npc-chat/`: Cloudflare Worker + `@anthropic-ai/sdk` 1.8.0. `claude-opus-5-5`, effort low, 거절 대체 `fallbacks: "default"`, 시스템 지시 캐시. 허용 주소·길이·IP 횟수 제한. 대화 저장·로그 없음. 키는 `wrangler secret`, 프런트 주소는 Actions Variables `VITE_NPC_CHAT_URL`.
+- 검사: 프런트 typecheck/build, Worker typecheck·`wrangler deploy --dry-run` 번들, `wrangler dev`로 다른 출처 403·사전 요청 204·키 없음 503. `scripts/capture-npc-chat.mjs local`: 두 방 × 데스크톱·모바일에서 멀리선 버튼 없음 → 다가가면 버튼 → 질문 → 답 → 멀어지면 버튼 사라짐, 콘솔 오류 0. 캡처 `13-npc-*` 직접 확인.
+- **실제 Claude 답은 아직 시험하지 못함**: Worker 배포와 API 키 등록은 운영자가 해야 한다(`worker/npc-chat/README.md`). 그 전까지 공개 사이트는 안내 답으로 동작.

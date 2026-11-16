@@ -11,6 +11,8 @@ import { WorkPanel } from './work/workPanel';
 import { kstHour } from './work/workStore';
 import { dayPhaseOf, type DayPhase } from './scene/lighting';
 import { placeAtSeat, spawnNpcs, syncNpcVisibility } from './avatar/npc';
+import { TALK_LEAVE, TALK_RANGE, spawnTalkNpcs, syncTalkNpcs, talkSpot, updateTalkNpcs, type TalkNpc } from './avatar/talkNpc';
+import { NpcChatSheet } from './ui/npcChatSheet';
 import { CAM_PRESETS, FollowCamera, applyPreset, createCamera } from './controls/camera';
 import { CanvasInput, isTyping } from './controls/input';
 import { Movement } from './controls/movement';
@@ -41,7 +43,7 @@ PORTALS, SEATS, SPAWN, SPAWNS, WORK_DESK, applyLayout, colliders, currentSpaceId
 } from './scene/layout';
 import { buildPostFx, type PostFx } from './scene/postfx';
 import { NavGrid } from './controls/pathfinding';
-import { Hud } from './ui/hud';
+import { Hud, icon } from './ui/hud';
 import type { LoadingScreen } from './ui/loading';
 import { SettingsSheet } from './ui/settings';
 import { Sheet, anySheetOpen, closeOpenSheet } from './ui/sheet';
@@ -116,11 +118,16 @@ export async function startApp(
     me.accent = MANAGER_COLOR;
   }
   const npcs = spawnNpcs(crowd, rng);
+  // 말 걸 수 있는 NPC(라운지 바리스타·모임방 모임지기)
+  const talkNpcs = spawnTalkNpcs(crowd);
+  const talkNpcOn = new URLSearchParams(location.search).get('talknpc') !== '0';
   /** 디버그: 내 아바타를 가까이서 보는 카메라 오프셋 */
   let meCam: [number, number, number] | null = null;
   const refreshNpcs = () => {
     const on = params.npc && settings.npc;
     syncNpcVisibility(npcs, currentSpaceId(), on);
+    // 말 거는 NPC는 'NPC 독자 표시'와 따로, 기본으로 보인다(?talknpc=0이면 숨김)
+    syncTalkNpcs(talkNpcs, currentSpaceId(), talkNpcOn);
   };
   refreshNpcs();
 
@@ -144,6 +151,32 @@ export async function startApp(
 
   // ---------- UI ----------
   const ui = document.getElementById('ui')!;
+  // NPC 대화: 가까이 가면 '이야기하기' 버튼, 누르면 대화 창
+  const npcChat = new NpcChatSheet();
+  const talkPrompt = document.createElement('button');
+  talkPrompt.type = 'button';
+  talkPrompt.className = 'talk-prompt';
+  talkPrompt.hidden = true;
+  ui.appendChild(talkPrompt);
+  let nearTalk: TalkNpc | null = null;
+  /** 받침이 있으면 '과', 없으면 '와' */
+  const withWa = (name: string) => {
+    const c = name.charCodeAt(name.length - 1) - 0xac00;
+    return name + (c >= 0 && c < 11172 && c % 28 ? '과' : '와');
+  };
+  /** NPC를 눌러 걸어가는 중이면, 도착했을 때 대화 창을 연다 */
+  let pendingTalk: TalkNpc | null = null;
+  const openTalk = (n: TalkNpc) => {
+    pendingTalk = null;
+    movement.stop();
+    const p = me.root.position, q = n.actor.root.position;
+    me.root.rotation.y = Math.atan2(q.x - p.x, q.z - p.z);
+    // 내 어깨 너머로 NPC가 보이게 카메라를 내 뒤로 돌린다
+    if (!fixedCam) follow.yaw = Math.atan2(p.x - q.x, p.z - q.z);
+    pushState(true);
+    npcChat.open(n.def.id, n.def.name);
+  };
+  talkPrompt.addEventListener('click', () => { if (nearTalk) openTalk(nearTalk); });
   const toasts = new Toasts(ui);
   const focus = new FocusMode(ui, () => setFocus(false));
   const bookCard = new BookCard(ui);
@@ -827,6 +860,21 @@ export async function startApp(
       -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     ray.setFromCamera(ndc, camera);
+    // 말 걸 수 있는 NPC를 누르면: 가까우면 바로 대화, 멀면 앞까지 걸어가서 대화
+    for (const n of talkNpcs) {
+      if (!n.actor.root.visible || !ray.intersectObject(n.actor.root, true).length) continue;
+      const p = me.root.position, q = n.actor.root.position;
+      if (Math.hypot(p.x - q.x, p.z - q.z) < TALK_RANGE) {
+        openTalk(n);
+      } else {
+        const spot = talkSpot(n, p);
+        const dest = movement.walkTo(spot);
+        if (dest) { ring.show(dest.x, dest.z); pendingTalk = n; }
+        pushState(true);
+      }
+      return;
+    }
+    pendingTalk = null;
     const targets = [...hitGroup.children, store.floor];
     const hits = ray.intersectObjects(targets, false);
     if (!hits.length) return;
@@ -977,6 +1025,25 @@ export async function startApp(
     if (!fixedCam && !anySheetOpen() && !focus.active && !follow.focused) follow.spin(input.spinAxis(), dt);
     movement.cameraYaw = follow.viewYaw;
     movement.update(dt);
+    {
+      nearTalk = updateTalkNpcs(talkNpcs, me.root.position, dt, npcChat.talkingTo);
+      if (pendingTalk && nearTalk === pendingTalk && !movement.moving) openTalk(pendingTalk);
+      else if (pendingTalk && !movement.moving) pendingTalk = null;
+      const show = !!nearTalk && !anySheetOpen() && !focus.active;
+      if (show && talkPrompt.dataset.npc !== nearTalk!.def.id) {
+        talkPrompt.dataset.npc = nearTalk!.def.id;
+        talkPrompt.innerHTML = `${icon('chat')}<span>${withWa(nearTalk!.def.name)} 이야기하기</span>`;
+      }
+      talkPrompt.hidden = !show;
+      if (!show) delete talkPrompt.dataset.npc;
+      // 대화 중 멀리 걸어가면 창을 닫는다
+      const talking = npcChat.talkingTo;
+      if (talking) {
+        const n = talkNpcs.find((t) => t.def.id === talking)!;
+        const p = me.root.position, q = n.actor.root.position;
+        if (!n.actor.root.visible || Math.hypot(p.x - q.x, p.z - q.z) > TALK_LEAVE) npcChat.close();
+      }
+    }
     if (movement.moving) pushState();
     if (!fixedCam) {
       follow.follow(me.root.position);
@@ -1042,6 +1109,8 @@ export async function startApp(
     sipNow: (kind: Parameters<typeof me.avatar.anim.sip>[0]) => me.avatar.anim.sip(kind),
     setReading: (on: boolean) => movement.setReading(on),
     meVisible: () => me.root.visible,
+    talk: () => ({ near: nearTalk?.def.id ?? null, open: npcChat.talkingTo, prompt: !talkPrompt.hidden }),
+    talkNpcPos: (id: string) => { const n = talkNpcs.find((t) => t.def.id === id); return n ? n.actor.root.position.toArray() : null; },
     debugLook: (look: Parameters<typeof me.avatar.setLook>[0]) => me.avatar.setLook(look),
     walkTo: (x: number, z: number) => movement.walkTo({ x, z }),
     space: () => currentSpaceId(),

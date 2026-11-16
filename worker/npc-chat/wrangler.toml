@@ -1,0 +1,11 @@
+# Y-Place NPC 대화 서버(Cloudflare Workers 무료 플랜).
+# 비밀값은 여기 적지 않는다: `npx wrangler secret put ANTHROPIC_API_KEY`로 넣는다.
+name = "y-place-npc-chat"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# 이 주소에서 온 요청만 받는다(쉼표로 구분).
+ALLOWED_ORIGINS = "https://yonghee0330.github.io,http://127.0.0.1:4173,http://localhost:5173"
+NPC_MODEL = "claude-opus-5-5"
