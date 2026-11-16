@@ -8,15 +8,15 @@ Y-Place에서 먼저 시험하고, 괜찮은 것만 비북스-M에 옮긴다(옮
 | 서비스 | 용도 | 무료 한도 | 현재 사용량 | 확인일·출처 |
 |---|---|---|---|---|
 | GitHub Pages + Actions | 정적 배포 | 공개 저장소 무료 | — | 기존 |
-| Cloudflare Workers (Free) | NPC 대화 서버 | 하루 10만 요청, 요청당 CPU 10ms(응답 대기 시간 제외) | 배포 전 | 2026-11-17, developers.cloudflare.com/workers/platform/limits |
-| Claude API | NPC 답 | 없음(종량제). Opus 5.5 $4/$20 per MTok | 배포 전 | 2026-11-17, Anthropic 가격표 |
+| Cloudflare Workers (Free) | NPC 대화 서버 | 하루 10만 요청, 요청당 CPU 10ms(응답 대기 시간 제외) | 2026-11-17 운영 시작(시험 요청 몇 건) | 2026-11-17, developers.cloudflare.com/workers/platform/limits |
+| Claude API | NPC 답 | 없음(종량제). Opus 5.5 $4/$20 per MTok | 2026-11-17 운영 시작(시험 2건) | 2026-11-17, Anthropic 가격표 |
 
 ## 완료
 
 | 날짜 | 항목 | 비고 |
 |---|---|---|
 | 2026-11-17 | 이동·카메라 부드럽게 | 가감속·모서리·아바타 중심 오빗 |
-| 2026-11-17 | NPC 대화(바리스타·모임지기) | Worker 배포·`VITE_NPC_CHAT_URL` 설정은 운영자 몫 |
+| 2026-11-17 | NPC 대화(바리스타·모임지기) | Worker 배포·키 등록·공개 사이트 AI 답 확인 완료 |
 
 ## 제안 (2026-11-17)
 

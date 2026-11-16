@@ -124,3 +124,4 @@
 - `worker/npc-chat/`: Cloudflare Worker + `@anthropic-ai/sdk` 1.8.0. `claude-opus-5-5`, effort low, 거절 대체 `fallbacks: "default"`, 시스템 지시 캐시. 허용 주소·길이·IP 횟수 제한. 대화 저장·로그 없음. 키는 `wrangler secret`, 프런트 주소는 Actions Variables `VITE_NPC_CHAT_URL`.
 - 검사: 프런트 typecheck/build, Worker typecheck·`wrangler deploy --dry-run` 번들, `wrangler dev`로 다른 출처 403·사전 요청 204·키 없음 503. `scripts/capture-npc-chat.mjs local`: 두 방 × 데스크톱·모바일에서 멀리선 버튼 없음 → 다가가면 버튼 → 질문 → 답 → 멀어지면 버튼 사라짐, 콘솔 오류 0. 캡처 `13-npc-*` 직접 확인.
 - **실제 Claude 답은 아직 시험하지 못함**: Worker 배포와 API 키 등록은 운영자가 해야 한다(`worker/npc-chat/README.md`). 그 전까지 공개 사이트는 안내 답으로 동작.
+- 2026-11-17 추가: 운영자가 Worker 배포·키 등록(`y-place-npc-chat`, workers.dev). `wrangler.toml`에 `workers_dev = true`·`preview_urls = false` 명시. GitHub Variables `VITE_NPC_CHAT_URL` 등록 후 재배포. **공개 사이트에서 실제 Claude 답 확인**(바리스타, 6.8초, 콘솔 오류 0, 캡처 `13-npc-live-ai.png`). 다른 출처 요청은 403.
