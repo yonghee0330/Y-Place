@@ -1,4 +1,4 @@
-// 설정 시트: 그래픽 품질, 닉네임 다시 뽑기, 아바타 색·머리 모양, 모션 줄이기, NPC 독자, 키보드 이동, 소리.
+// 설정 시트: 그래픽 품질, 닉네임 바꾸기, 아바타 색·머리 모양, 모션 줄이기, NPC 독자, 키보드 이동, 소리.
 // 바꾸는 즉시 localStorage에 저장하고 앱에 알린다. 매니저는 외형·닉을 잠근다.
 import type { QualityLevel } from '../core/params';
 import {
@@ -6,7 +6,7 @@ import {
   type Profile, type Settings,
 } from '../core/storage';
 import type { HairStyle } from '../net/presence';
-import { characterBlurb, randomNickname, warmHometownDong } from '../net/nickname';
+import { NICKNAME_MAX, cleanNickname, randomNickname } from '../net/nickname';
 import { Sheet } from './sheet';
 
 const QUALITY_LABEL: Record<Settings['quality'], string> = { auto: '자동', low: '낮음', medium: '보통', high: '높음' };
@@ -49,11 +49,12 @@ export class SettingsSheet {
         <p class="field-note">Y-Place 운영자(대표) 전용 아바타예요. 닉네임·외형은 고정입니다.</p>
       </div>` : `
       <div class="field">
+        <label class="field-label" for="settings-nick">닉네임</label>
         <div class="field-row">
-          <div><div class="field-label">닉네임</div><div class="nick" aria-live="polite"></div></div>
-          <button type="button" class="btn" data-act="reroll" aria-label="닉네임 다시 뽑기">다시 뽑기</button>
+          <input id="settings-nick" class="nick-input" type="text" maxlength="${NICKNAME_MAX}" autocomplete="off" spellcheck="false" enterkeyhint="done" data-nick-input />
+          <button type="button" class="btn" data-act="reroll" aria-label="닉네임 추천받기">추천</button>
         </div>
-        <p class="field-note" data-nick-blurb></p>
+        <p class="field-note">실명 대신 편한 이름을 써 주세요. 최대 ${NICKNAME_MAX}자.</p>
       </div>
       <fieldset class="field">
         <legend>아바타 색</legend>
@@ -92,13 +93,23 @@ export class SettingsSheet {
     );
     b.querySelector('[data-act="reroll"]')?.addEventListener('click', () => {
       if (this.manager) return;
-      const btn = b.querySelector<HTMLButtonElement>('[data-act="reroll"]');
-      if (btn) btn.disabled = true;
-      void warmHometownDong().then(() => {
-        this.profile.nickname = randomNickname();
-        this.commitProfile();
-        if (btn) btn.disabled = false;
-      });
+      let n = randomNickname();
+      for (let i = 0; i < 5 && n === this.profile.nickname; i++) n = randomNickname();
+      this.profile.nickname = n;
+      this.commitProfile();
+    });
+    const nickInput = b.querySelector<HTMLInputElement>('[data-nick-input]');
+    const commitNick = (): void => {
+      if (this.manager || !nickInput) return;
+      const n = cleanNickname(nickInput.value);
+      if (!n || n === this.profile.nickname) { nickInput.value = this.profile.nickname; return; }
+      this.profile.nickname = n;
+      this.profile.nickChosen = true;
+      this.commitProfile();
+    };
+    nickInput?.addEventListener('change', commitNick);
+    nickInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); commitNick(); nickInput.blur(); }
     });
     b.querySelectorAll<HTMLButtonElement>('[data-color]').forEach((btn) =>
       btn.addEventListener('click', () => {
@@ -161,8 +172,8 @@ export class SettingsSheet {
     b.querySelectorAll<HTMLButtonElement>('[data-hair]').forEach((btn) => btn.setAttribute('aria-checked', String(btn.dataset.hair === this.profile.hair)));
     const nick = b.querySelector('.nick');
     if (nick) nick.textContent = this.manager ? `${this.profile.nickname} (대표)` : this.profile.nickname;
-    const blurb = b.querySelector('[data-nick-blurb]');
-    if (blurb) blurb.textContent = this.manager ? 'Y-Place 운영자(대표) 전용 아바타예요.' : characterBlurb(this.profile.nickname);
+    const nickInput = b.querySelector<HTMLInputElement>('[data-nick-input]');
+    if (nickInput && document.activeElement !== nickInput) nickInput.value = this.profile.nickname;
     b.querySelectorAll<HTMLInputElement>('[data-set]').forEach((i) => {
       const key = i.dataset.set as 'reducedMotion' | 'npc' | 'keyboardMove' | 'music';
       i.checked = Boolean(this.settings[key]);

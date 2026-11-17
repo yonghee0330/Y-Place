@@ -23,7 +23,7 @@ import { Rng } from './core/rng';
 import { MANAGER_COLOR, MANAGER_NICKNAME } from './core/manager';
 import { loadProfile, loadSettings, saveSettings, type Profile, type Settings } from './core/storage';
 import { LocalPresence } from './net/localPresence';
-import { randomNickname } from './net/nickname';
+import { withSuffix } from './net/nickname';
 import { newId, sanitizeSharedBook, type ActionEvent, type Presence, type PlayerState, type SharedBook } from './net/presence';
 import { hasSupabaseConfig, supabaseKakaoApiBase } from './net/supabaseClient';
 import { SupabasePresence } from './net/supabasePresence';
@@ -409,7 +409,7 @@ export async function startApp(
       a.pushRemote(s, now);
       // 닉네임이 겹치면 id가 큰 쪽이 이 탭에서만 다시 뽑는다(매니저는 고정)
       if (!isManager && s.nickname === sessionNick && myId > s.id) {
-        sessionNick = randomNickname();
+        sessionNick = withSuffix(sessionNick);
         me.nickname = sessionNick;
         pushState(true);
       }

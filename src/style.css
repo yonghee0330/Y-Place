@@ -898,3 +898,25 @@ button.pill:hover { background: rgba(36, 37, 31, 0.72); }
 @media (min-width: 900px) {
   .sheet-backdrop:has(.chat-sheet) { place-items: center end; padding-right: max(24px, env(safe-area-inset-right)); background: rgba(20, 18, 14, 0.12); }
 }
+
+/* 시작 화면 닉네임 입력 */
+.start-nick { margin: 0 auto 18px; width: min(300px, 82vw); text-align: left; }
+.start-nick-label { display: block; font: 500 12px/1.4 var(--serif); letter-spacing: .12em; color: rgba(236, 220, 190, .8); margin-bottom: 6px; }
+.start-nick-row { display: flex; gap: 6px; }
+.start-nick-input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 12px;
+  border: 1px solid rgba(196, 164, 106, .5); border-radius: 3px;
+  background: rgba(20, 18, 14, .72); color: #f4e6c8;
+  font: 500 16px/1 var(--serif); letter-spacing: .03em;
+}
+.start-nick-input::placeholder { color: rgba(236, 220, 190, .42); }
+.start-nick-input:focus-visible { outline: 2px solid rgba(232, 196, 120, .85); outline-offset: 1px; }
+.start-nick-suggest {
+  appearance: none; cursor: pointer; flex: none; min-height: 44px; padding: 0 14px;
+  border: 1px solid rgba(196, 164, 106, .4); border-radius: 3px;
+  background: rgba(60, 44, 30, .6); color: #ecdcbe; font: 500 13px/1 var(--serif);
+}
+.start-nick-suggest:hover { border-color: rgba(220, 190, 130, .8); }
+.start-nick-note { margin: 6px 0 0; font-size: 11.5px; line-height: 1.5; color: rgba(236, 220, 190, .6); }
+.nick-input { flex: 1; min-width: 0; min-height: 40px; padding: 0 10px; border: 1px solid #d8ccb6; border-radius: 6px; font: 600 15px/1 var(--serif); background: #fffaf0; color: inherit; }
+@media (max-width: 480px) { .start-nick { margin-bottom: 14px; } .start-copy { margin: 10px 0 14px; } }

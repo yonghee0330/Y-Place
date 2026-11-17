@@ -45,9 +45,13 @@ export function spawnNpcs(crowd: Crowd, rng: Rng): NpcReader[] {
     [shelf[i], shelf[j]] = [shelf[j], shelf[i]];
   }
 
+  // NPC 독자는 편한 닉네임(서로 겹치지 않게)
+  const used = new Set<string>();
   return NPC_SPOTS.map((spot, i) => {
     const book = shelf[i % shelf.length]!;
-    const nick = randomNickname(() => r.float());
+    let nick = randomNickname(() => r.float());
+    for (let k = 0; k < 20 && used.has(nick); k++) nick = randomNickname(() => r.float());
+    used.add(nick);
     const actor = crowd.add(`npc-${i}`, 'npc', nick, { color: r.pick(OUTFIT_COLORS), hair: r.pick(HAIR_STYLES) }, true);
     placeStanding(actor, spot);
     // seatId null → 서서 읽기

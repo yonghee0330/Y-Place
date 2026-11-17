@@ -22,7 +22,13 @@ function write(key: string, value: unknown): void {
 export const OUTFIT_COLORS = ['#c9583e', '#e0a53b', '#5b8a5a', '#3f6e8c', '#8a5a9e', '#d98a9b', '#e8dcc4', '#6b7b3a'] as const;
 export const HAIR_STYLES: HairStyle[] = ['bangs', 'bob', 'short'];
 
-export interface Profile { nickname: string; color: string; hair: HairStyle }
+export interface Profile {
+  nickname: string;
+  color: string;
+  hair: HairStyle;
+  /** 사용자가 닉네임을 직접 정했는지(아니면 시작 화면 입력 칸을 비워 둔다) */
+  nickChosen?: boolean;
+}
 
 export interface Settings {
   quality: QualityLevel | 'auto';

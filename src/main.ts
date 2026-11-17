@@ -4,13 +4,15 @@ import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './style.css';
 
 import { startApp } from './app';
+import { loadProfile, saveProfile } from './core/storage';
+import { cleanNickname, randomNickname } from './net/nickname';
 import { checkManagerCode, managerCode, loadManagerSession, saveManagerSession } from './core/manager';
 import { readParams } from './core/params';
 import { registerServiceWorker } from './pwa/register';
 import { LoadingScreen } from './ui/loading';
 import { fetchBucheonWeather, weatherAria } from './weather/bucheon';
 
-// 닉네임은 지역 목록에서 무작위로 정하며 위치 정보를 조회하지 않는다.
+// 닉네임은 입장할 때 직접 정한다. 비우면 추천 닉네임으로 들어간다. 이 브라우저에만 저장한다.
 
 
 declare global {
@@ -29,6 +31,30 @@ const gateEl = document.getElementById('manager-gate')!;
 const codeInput = document.getElementById('manager-code') as HTMLInputElement;
 const gateError = document.getElementById('manager-gate-error')!;
 document.getElementById('start-manager')!.hidden = !managerCode();
+
+// ---------- 닉네임 입력 ----------
+const nickInput = document.getElementById('start-nick') as HTMLInputElement;
+const savedProfile = loadProfile();
+nickInput.value = savedProfile.nickChosen ? cleanNickname(savedProfile.nickname) : '';
+const suggestNick = (): void => {
+  let n = randomNickname();
+  for (let i = 0; i < 5 && n === nickInput.placeholder; i++) n = randomNickname();
+  nickInput.placeholder = n;
+};
+suggestNick();
+document.getElementById('start-nick-suggest')!.addEventListener('click', () => {
+  suggestNick();
+  nickInput.value = nickInput.placeholder;
+  nickInput.focus();
+});
+/** 입력한 닉네임을 프로필에 저장(비우면 추천 닉네임) */
+function commitNickname(): void {
+  const nick = cleanNickname(nickInput.value) || nickInput.placeholder;
+  nickInput.value = nick;
+  savedProfile.nickname = nick;
+  savedProfile.nickChosen = true;
+  saveProfile(savedProfile);
+}
 
 // 캔버스 설명만 부천 날씨에 맞춘다(시작 문구는 고정)
 void fetchBucheonWeather(params.weather).then((w) => {
@@ -82,7 +108,14 @@ function submitManagerCode(): void {
 document.getElementById('start-enter')!.addEventListener('click', () => {
   asManager = false;
   saveManagerSession(false);
+  commitNickname();
   void enter();
+});
+nickInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    document.getElementById('start-enter')!.click();
+  }
 });
 document.getElementById('start-manager')!.addEventListener('click', (e) => {
   e.preventDefault();

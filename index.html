@@ -32,6 +32,14 @@
           <p class="start-kicker">나의 작업 공간</p>
           <h1 id="start-title" class="start-title">Y-Place</h1>
           <p class="start-copy">책과 사람, 잠시 머무는 시간.<br />나의 작은 작업 공간.</p>
+          <div class="start-nick">
+            <label for="start-nick" class="start-nick-label">닉네임</label>
+            <div class="start-nick-row">
+              <input id="start-nick" class="start-nick-input" type="text" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" aria-describedby="start-nick-note" />
+              <button type="button" id="start-nick-suggest" class="start-nick-suggest" aria-label="닉네임 추천받기">추천</button>
+            </div>
+            <p id="start-nick-note" class="start-nick-note">공간에서 이름표로 보여요. 실명 대신 편한 이름을 써 주세요.</p>
+          </div>
           <button type="button" id="start-manager" class="start-m-secret" aria-label="운영자 입장">운영자</button>
           <button id="start-enter" class="start-enter" type="button" aria-label="Y-Place 입장하기">Y-Place 입장하기</button>
         </div>
