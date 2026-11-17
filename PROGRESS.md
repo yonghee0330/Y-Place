@@ -134,3 +134,7 @@
 - NPC 안내 지식(`worker/npc-chat/src/personas.ts`)과 안내 답(`npcChat.ts`)을 새 방 위치로 갱신(전시·책방·서재·방 위치 질문 추가).
 - 입장 자리: 서재가 앞벽 1m라 데스크톱에서 아바타가 숨겨짐 → 1.5m로. 전시실은 카메라가 바닥만 봄 → 앞벽 1.6m로.
 - 검사: typecheck/build(사이트·Worker), test:layout 9개 방, test:presence(로비 12), e2e 9/9(로비 좌석 테스트를 자리마다 위에서 누르게, 문 왕복 테스트를 목적지 문을 찾게 고침, **새 방 왕복 테스트 추가**), NPC 대화 안내 답 4화면, `capture-lab.mjs` 다섯 방 × 데스크톱·모바일 입장 시 아바타 보임·콘솔 오류 0. 캡처 `14-lab-*` 직접 확인.
+
+## 2026-11-17 NPC 답변 모델 변경
+- Worker 기본 모델 `claude-haiku-5-5`, `NPC_EFFORT=high`, max_tokens 4096, Haiku일 때 fallbacks 끔. Worker 재배포(버전 a4678764).
+- 실서버 확인: 바리스타에게 "전시실은 어디예요?" → "로비 뒷벽 오른쪽 문" 정확(2.1초), 음료 질문 2.4초. 이전 Opus 응답 3.8초.

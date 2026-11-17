@@ -4,7 +4,7 @@
 
 - 받는 곳: `POST /chat` `{ npc: "barista" | "host", messages: [{ role, content }] }` → `{ reply }`
 - 막는 것: 허용 주소(`ALLOWED_ORIGINS`) 밖의 요청, 한 번에 12턴·한 마디 300자·합계 3000자 초과, 같은 IP 10분 20회 초과(인스턴스별 대략치)
-- 모델: `NPC_MODEL`(기본 `claude-opus-5-5`, 생각 노력 `low`, 거절 시 서버 측 대체 모델 `fallbacks: "default"`)
+- 모델: `NPC_MODEL`(기본 `claude-haiku-5-5`), 생각 노력 `NPC_EFFORT`(기본 `high`). 2026-11-17 운영자 결정으로 Opus 5.5 → Haiku 5.5. Haiku에는 서버 측 대체 모델이 없어, 다른 모델로 바꿀 때만 `fallbacks: "default"`를 켭니다.
 - NPC 성격·공간 지식: `src/personas.ts` (클라이언트는 NPC id만 보냄)
 
 ## 처음 설정(운영자가 직접)
@@ -25,7 +25,7 @@
 ## 무료 한도·비용 (확인일 2026-11-17)
 
 - Cloudflare Workers Free: 하루 10만 요청, 요청당 CPU 10ms, Claude 응답을 기다리는 시간은 CPU에 안 들어감. 출처: https://developers.cloudflare.com/workers/platform/limits/
-- Claude API는 유료(종량제). Opus 5.5 입력 $4 / 출력 $20 (100만 토큰당). 대화 한 번(시스템 지시 약 1.2천 토큰 + 짧은 답·생각)에 대략 1~2센트로 추정(실측 전). Haiku 5.5로 바꾸면 수십 분의 1 수준(`NPC_MODEL`만 바꾸면 됨, 품질은 시험 필요).
+- Claude API는 유료(종량제). Haiku 5.5 입력 $0.10 / 출력 $0.50 (100만 토큰당, 2026-11 가격표). 대화 한 번(입력 약 1.5천 + 출력·생각 약 300토큰)에 약 $0.0003으로 추정(실측 전). 참고: Opus 5.5는 $4/$20으로 약 40배, Sonnet 5.5는 $2/$10.
 
 ## 시험
 

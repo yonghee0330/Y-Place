@@ -7,7 +7,11 @@ interface Env {
   ANTHROPIC_API_KEY: string;
   ALLOWED_ORIGINS: string;
   NPC_MODEL?: string;
+  NPC_EFFORT?: string;
 }
+
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+type Effort = (typeof EFFORTS)[number];
 
 /** 한 번에 받는 대화 길이 제한(비용·남용 방지) */
 const MAX_TURNS = 12;
@@ -87,15 +91,18 @@ export default {
 
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 25_000 });
     try {
+      const model = env.NPC_MODEL || 'claude-haiku-5-5';
+      const effort: Effort = (EFFORTS as readonly string[]).includes(env.NPC_EFFORT ?? '') ? (env.NPC_EFFORT as Effort) : 'high';
+      // Haiku에는 서버 측 대체 모델(fallbacks)이 없다. 그 밖의 모델에서만 켠다.
+      const fallback = model.startsWith('claude-haiku')
+        ? {}
+        : { betas: ['server-side-fallback-2026-07-01'] as Anthropic.Beta.AnthropicBeta[], fallbacks: 'default' as const };
       const res = await client.beta.messages.create({
-        model: env.NPC_MODEL || 'claude-opus-5-5',
-        // 짧은 대사만 쓰므로 일부러 작게(생각 토큰 포함)
-        max_tokens: 2048,
-        // 가벼운 대화: 생각은 짧게
-        output_config: { effort: 'low' },
-        // 안전 분류기가 거절하면 서버가 알맞은 모델로 다시 답한다
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
+        model,
+        // 짧은 대사지만 생각 토큰까지 들어가므로 여유를 둔다
+        max_tokens: 4096,
+        output_config: { effort },
+        ...fallback,
         system: [{ type: 'text', text: PERSONAS[body.npc].system, cache_control: { type: 'ephemeral' } }],
         messages,
       });

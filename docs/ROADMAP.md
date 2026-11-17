@@ -9,7 +9,7 @@ Y-Place에서 먼저 시험하고, 괜찮은 것만 비북스-M에 옮긴다(옮
 |---|---|---|---|---|
 | GitHub Pages + Actions | 정적 배포 | 공개 저장소 무료 | — | 기존 |
 | Cloudflare Workers (Free) | NPC 대화 서버 | 하루 10만 요청, 요청당 CPU 10ms(응답 대기 시간 제외) | 2026-11-17 운영 시작(시험 요청 몇 건) | 2026-11-17, developers.cloudflare.com/workers/platform/limits |
-| Claude API | NPC 답 | 없음(종량제). Opus 5.5 $4/$20 per MTok | 2026-11-17 운영 시작(시험 2건) | 2026-11-17, Anthropic 가격표 |
+| Claude API | NPC 답 | 없음(종량제). Haiku 5.5 $0.10/$0.50 per MTok(effort high) | 2026-11-17 운영 시작, 같은 날 Opus 5.5 → Haiku 5.5 | 2026-11-17, Anthropic 가격표 |
 
 ## 완료
 
