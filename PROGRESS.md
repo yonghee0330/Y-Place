@@ -197,6 +197,11 @@
 - 큐레이터·책방 실험자 안내 답과 Worker 맥락에 `[이번 주 신간 제안]` 요약. 목록 밖 제목은 지어내지 않음.
 - 검증: typecheck(사이트·Worker), build, `scripts/check-new-releases.mjs`(npcchat=local) 통과, 콘솔 오류 0. 캡처 `18-new-release-*`.
 
+## 2026-11-22 구역별 정원 2명
+- 운영자 요청: 접속 인원을 각 공간별로 2명.
+- `SPACE_CAPACITY` 전 구역 2, `ROOM_CAPACITY` 기본 2. presence 채널을 구역마다 분리하고, 걸어서/워프로 구역을 바꿀 때 재접속. 만석이면 이전 구역 스폰으로 되돌리고 토스트.
+- 검증: typecheck, `test:presence`(shop·bookshop·cowork 각 2명·초과 거절·퇴장 후 재입장), build 통과.
+
 ## 2026-11-22 NPC가 지금 공간을 안다 (A1)
 - 대화 요청마다 장면 맥락을 붙인다: 방 이름, 접속자 수/정원, 부천 날씨 문구, 시간대(아침·낮·해질녘·밤), 내 닉네임, 앉은 자리(사람이 읽는 이름), 내가 읽는 책, 지금 책 펼친 사람(닉네임+제목).
 - 프런트: `src/net/npcChat.ts`에 `NpcSceneContext`·정리·자리 이름·로컬 안내 답. `app.ts`가 `buildNpcScene()`으로 모아 `NpcChatSheet`에 넘김. 디버그 `__YONGSEOJEOM.sceneContext()`.

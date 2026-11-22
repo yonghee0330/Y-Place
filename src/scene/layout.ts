@@ -390,14 +390,14 @@ export function currentSpace(): SpaceLayout {
   return CAMPUS_LAYOUT;
 }
 
-/** 캠퍼스 전체 정원. 구역별 정원을 나누지 않는다. */
+/** 구역별 정원(NPC 제외). */
 export const SPACE_CAPACITY: Record<SpaceId, number> = {
-  shop: 20, bookshop: 20, circle: 20, gallery: 20,
-  market: 20, challenge: 20, cowork: 20, tech: 20,
+  shop: 2, bookshop: 2, circle: 2, gallery: 2,
+  market: 2, challenge: 2, cowork: 2, tech: 2,
 };
 
-export function spaceCapacity(_id: SpaceId = activeId): number {
-  return 20;
+export function spaceCapacity(id: SpaceId = activeId): number {
+  return SPACE_CAPACITY[id];
 }
 
 export function spaceLabel(id: SpaceId = activeId): string {

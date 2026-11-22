@@ -13,7 +13,7 @@
 | 공동 작업실 (`cowork`) | 원고 마감·작가 모임용 책상·타이머 |
 | 신기술 개발실 (`tech`) | 운영자 기술 시험용 책상(골격) |
 
-캠퍼스 정원 20명(구역별 정원 없음). `shop` id는 방문자 저장값·채널 이름을 지키려고 유지합니다.
+구역마다 정원 2명(presence 채널 분리). `shop` id는 방문자 저장값·채널 이름을 지키려고 유지합니다.
 
 [Y-Place 열기](https://yonghee0330.github.io/Y-Place/) · [소스 저장소](https://github.com/yonghee0330/Y-Place)
 
@@ -22,7 +22,7 @@
 Node 22.12 이상에서 `npm ci` 후 `npm run dev`로 실행합니다. 배포 빌드는 `npm run typecheck && npm run build`, 로컬 확인은 `npm run preview`입니다.
 
 - `npm run test:layout`: 캠퍼스 스폰·구역 스폰·좌석 접근점·클릭 상자 검사.
-- `npm run test:presence`: 캠퍼스 20명 정원, 초과 거절 및 퇴장 후 재입장 검사.
+- `npm run test:presence`: 구역 정원 2명, 초과 거절 및 퇴장 후 재입장 검사.
 - `npm run test:e2e`: Chromium에서 광장·모임 착석, 구역 이동, 공동 작업 타이머, 폭 420px 흐름 검사. Playwright Chromium 설치가 필요합니다.
 - `node scripts/capture-lab.mjs`: 다섯 방의 전체 모습과 입장 직후 시점(데스크톱·모바일) 캡처.
 - `npm run capture -- 05`: 실행 중인 preview의 두 방을 SwiftShader로 촬영해 `docs/screens/`에 저장합니다. e2e는 macOS에서 Metal, 다른 환경에서는 SwiftShader를 사용하며 정적 캡처는 SwiftShader를 사용합니다.
