@@ -274,6 +274,7 @@ export async function startApp(
       toasts.show(`「${book.title}」을(를) 펼쳤어요`);
     }, focusId);
   };
+  npcChat.onOpenNewReleases = () => openNewReleases();
   const hud = new Hud(ui, {
     exit: () => {
       sfx.play('tap');

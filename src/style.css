@@ -888,6 +888,16 @@ button.pill:hover { background: rgba(36, 37, 31, 0.72); }
 .chat-typing span { width: 6px; height: 6px; border-radius: 50%; background: #b9a68a; animation: pulse 1s ease-in-out infinite; }
 .chat-typing span:nth-child(2) { animation-delay: 0.15s; }
 .chat-typing span:nth-child(3) { animation-delay: 0.3s; }
+.chat-choices {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 0 4px;
+}
+.chat-choice {
+  appearance: none; cursor: pointer; border: 1px solid rgba(36, 37, 31, 0.16);
+  background: #fff; color: var(--green); border-radius: 999px; padding: 10px 14px;
+  font: 600 13px/1.2 var(--sans); min-height: 40px;
+}
+.chat-choice:hover { border-color: rgba(192, 138, 78, 0.7); background: #fffaf2; }
+.chat-choice:focus-visible { outline: 2px solid #8a5a22; outline-offset: 2px; }
 .chat-form { display: flex; gap: 8px; position: sticky; bottom: 0; background: var(--paper); padding-top: 4px; }
 .chat-input {
   flex: 1; min-width: 0; min-height: 44px; padding: 0 14px; border: 1px solid rgba(36, 37, 31, 0.18); border-radius: 999px;
