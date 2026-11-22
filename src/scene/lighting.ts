@@ -122,7 +122,8 @@ export function buildLighting(
   const syncSpaceLamps = (space: SpaceId) => {
     const anchors = lampsBySpace[space] ?? [];
     const bookstore = space === 'bookshop' || space === 'library';
-    const boost = bookstore ? 1.3 : 1;
+    const gallery = space === 'gallery';
+    const boost = bookstore ? 1.3 : gallery ? 1.2 : 1;
     while (points.length < anchors.length) {
       const p = new THREE.SpotLight(WARM, 1.5, 0, 1.25, 0.85, 2);
       points.push(p);
@@ -151,7 +152,7 @@ export function buildLighting(
       if (pend.kind === 'pendant') spot.position.x += 0.35;
       spot.target.position.set(pend.position.x, 0, pend.position.z);
       spot.target.updateMatrixWorld();
-      spot.intensity = bookstore ? 10.5 : 8;
+      spot.intensity = bookstore ? 10.5 : gallery ? 9.5 : 8;
     } else {
       spot.visible = false;
       spot.intensity = 0;
@@ -190,11 +191,12 @@ export function buildLighting(
     syncSpaceLamps(mood);
     const interior = mood !== 'shop'; // 창 없는 안쪽 방
     const bookstore = mood === 'bookshop' || mood === 'library';
-    roomFill.intensity = bookstore ? 3.5 : interior ? 2.8 : 1.8;
-    roomFill.color.setHex(bookstore ? 0xffd4a0 : 0xffe0b8);
+    const gallery = mood === 'gallery';
+    roomFill.intensity = bookstore ? 3.5 : gallery ? 3.3 : interior ? 2.8 : 1.8;
+    roomFill.color.setHex(bookstore ? 0xffd4a0 : gallery ? 0xffead0 : 0xffe0b8);
     key.intensity = interior ? 0.35 : (lastQ.shadows ? 1.1 : 0.65);
-    hemi.intensity = bookstore ? 0.95 : interior ? 0.85 : 0.8;
-    hemi.color.setHex(bookstore ? 0xfff0dc : 0xffefd9);
+    hemi.intensity = bookstore || gallery ? 0.95 : interior ? 0.85 : 0.8;
+    hemi.color.setHex(bookstore ? 0xfff0dc : gallery ? 0xfff5ea : 0xffefd9);
     hemi.groundColor.setHex(0x685445);
     scene.environmentIntensity = 0.25;
     patchMat.opacity = interior ? 0 : 0.1;

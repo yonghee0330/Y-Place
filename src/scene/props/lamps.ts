@@ -1,7 +1,7 @@
 // 스탠드 조명 2개, 펜던트 조명 3개. 빛 위치는 lighting.ts가 받아 쓴다.
 import * as THREE from 'three';
 import { MergeBucket, trs } from '../geom';
-import { FLOOR_LAMPS, PENDANTS, ROOM, ISLANDS, READING_TABLE, isPresent } from '../layout';
+import { EXHIBITS, FLOOR_LAMPS, PENDANTS, ROOM, ISLANDS, READING_TABLE, isPresent } from '../layout';
 
 export interface LampAnchor { kind: 'floor' | 'pendant'; position: THREE.Vector3 }
 
@@ -52,6 +52,12 @@ export function buildLamps(bucket: MergeBucket): LampAnchor[] {
     bucket.add('lampShade',shade,trs(x,y+.28,z));
     bucket.add('bulb',new THREE.SphereGeometry(.025,12,8),trs(x,y+.35,z));
     anchors.push({kind:'floor',position:new THREE.Vector3(x,y+.32,z)});
+  }
+  // 전시실 뒷벽 작품등 3개만 실제 스포트로(전부 넣으면 과해짐)
+  for (const e of EXHIBITS.filter((x) => Math.abs(x.ry) < 0.01).slice(0, 3)) {
+    const m = trs(e.x, e.y, e.z, 0, e.ry);
+    const pos = new THREE.Vector3(0, e.h / 2 + 0.14, 0.2).applyMatrix4(m);
+    anchors.push({ kind: 'floor', position: pos });
   }
   // 서재 열람 테이블 위 탁상 램프(책 읽는 자리에 따뜻한 점광)
   if (isPresent(READING_TABLE) && READING_TABLE.w > 0.1) {

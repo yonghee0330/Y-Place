@@ -307,6 +307,9 @@ export function buildBench(bucket: MergeBucket, rng: Rng, books: BookCollector):
     const cushion = projectUV(bevelBox(w / 2 - 0.04, 0.06, d - 0.04, 0.025, 4), 'x', { along: 0.3, across: 0.3, offset: [r.float(), r.float()] });
     bucket.add('benchCushion', cushion, at(trs(sx * (w / 4), h + 0.03, 0, 0, r.range(-0.03, 0.03))), new THREE.Color(1, 1, 1).multiplyScalar(1 + r.range(-0.04, 0.04)));
   }
+  // 전시 안내 리플릿(벤치 한쪽)
+  bucket.add('paper', new THREE.BoxGeometry(0.12, 0.008, 0.16), at(trs(w * 0.28, h + 0.07, 0.02, 0, 0.2)), 0xf4ebe0);
+  bucket.add('kraft', new THREE.BoxGeometry(0.11, 0.006, 0.15), at(trs(w * 0.3, h + 0.078, 0.0, 0, -0.15)), 0xc9a57a);
   void books;
 }
 

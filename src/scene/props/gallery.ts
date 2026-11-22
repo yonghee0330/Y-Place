@@ -12,7 +12,7 @@ const PALETTES = [
   ['#f4efe6', '#8a5a9e', '#e0a53b', '#3f6e8c', '#c9583e'],
 ];
 
-function paintArt(seed: number, w: number, h: number): THREE.CanvasTexture {
+function paintArt(seed: number, w: number, h: number, styleHint = 0): THREE.CanvasTexture {
   const r = new Rng(seed);
   const W = 512, H = Math.round((512 * h) / w);
   const canvas = document.createElement('canvas');
@@ -20,7 +20,8 @@ function paintArt(seed: number, w: number, h: number): THREE.CanvasTexture {
   const c = canvas.getContext('2d')!;
   const pal = PALETTES[seed % PALETTES.length];
   c.fillStyle = pal[0]; c.fillRect(0, 0, W, H);
-  const style = seed % 3;
+  // 작품 순번으로 스타일을 돌려 이웃 작품이 같은 패턴이 되지 않게
+  const style = styleHint % 4;
   if (style === 0) {
     // 색면: 겹친 사각 면과 가는 선
     for (let i = 0; i < 6; i++) {
@@ -39,7 +40,7 @@ function paintArt(seed: number, w: number, h: number): THREE.CanvasTexture {
     }
     c.globalAlpha = 1; c.strokeStyle = pal[2]; c.lineWidth = 6;
     c.beginPath(); c.arc(W * 0.5, H * 0.55, W * 0.3, Math.PI * 1.1, Math.PI * 1.9); c.stroke();
-  } else {
+  } else if (style === 2) {
     // 줄무늬 리듬(서가처럼)
     let x = 0;
     while (x < W) {
@@ -50,6 +51,17 @@ function paintArt(seed: number, w: number, h: number): THREE.CanvasTexture {
       x += bw;
     }
     c.fillStyle = pal[4]; c.fillRect(0, H * 0.88, W, 5);
+  } else {
+    // 점·띠: 여백이 많은 전시용 추상
+    c.fillStyle = pal[1];
+    c.fillRect(W * 0.08, H * 0.12, W * 0.18, H * 0.76);
+    c.fillStyle = pal[2];
+    c.beginPath(); c.arc(W * 0.62, H * 0.38, W * 0.16, 0, Math.PI * 2); c.fill();
+    c.fillStyle = pal[3];
+    c.fillRect(W * 0.48, H * 0.62, W * 0.38, H * 0.12);
+    c.strokeStyle = pal[4]; c.lineWidth = 4; c.globalAlpha = 0.85;
+    c.beginPath(); c.moveTo(W * 0.3, H * 0.2); c.lineTo(W * 0.9, H * 0.78); c.stroke();
+    c.globalAlpha = 1;
   }
   // 캔버스 결
   c.globalAlpha = 0.06; c.fillStyle = '#000';
@@ -83,51 +95,65 @@ function plaqueTexture(title: string): THREE.CanvasTexture {
 export function buildGallery(bucket: MergeBucket, rng: Rng): THREE.Group {
   const group = new THREE.Group();
   group.name = 'gallery-art';
-  for (const e of EXHIBITS) {
+  EXHIBITS.forEach((e, ei) => {
     const base = trs(e.x, e.y, e.z, 0, e.ry);
     const at = (m: THREE.Matrix4) => base.clone().multiply(m);
-    // 액자: 바깥 나무 틀 + 흰 매트
-    const fw = 0.05;
-    bucket.add('walnut', bevelBox(e.w + fw * 2, fw, 0.05, 0.008), at(trs(0, e.h / 2 + fw / 2, 0.025)));
-    bucket.add('walnut', bevelBox(e.w + fw * 2, fw, 0.05, 0.008), at(trs(0, -e.h / 2 - fw / 2, 0.025)));
-    bucket.add('walnut', bevelBox(fw, e.h, 0.05, 0.008), at(trs(-e.w / 2 - fw / 2, 0, 0.025)));
-    bucket.add('walnut', bevelBox(fw, e.h, 0.05, 0.008), at(trs(e.w / 2 + fw / 2, 0, 0.025)));
-    bucket.add('paper', bevelBox(e.w, e.h, 0.012, 0.002), at(trs(0, 0, 0.012)));
-    // 작품등: 위쪽 황동 팔과 갓
+    // 액자: 바깥 나무 틀 + 안쪽 몰딩 + 흰 매트
+    const fw = 0.055;
+    bucket.add('walnut', bevelBox(e.w + fw * 2, fw, 0.055, 0.008), at(trs(0, e.h / 2 + fw / 2, 0.028)));
+    bucket.add('walnut', bevelBox(e.w + fw * 2, fw, 0.055, 0.008), at(trs(0, -e.h / 2 - fw / 2, 0.028)));
+    bucket.add('walnut', bevelBox(fw, e.h, 0.055, 0.008), at(trs(-e.w / 2 - fw / 2, 0, 0.028)));
+    bucket.add('walnut', bevelBox(fw, e.h, 0.055, 0.008), at(trs(e.w / 2 + fw / 2, 0, 0.028)));
+    bucket.add('honey', bevelBox(e.w + 0.02, e.h + 0.02, 0.018, 0.003), at(trs(0, 0, 0.01)));
+    bucket.add('paper', bevelBox(e.w, e.h, 0.012, 0.002), at(trs(0, 0, 0.018)));
+    // 작품등: 위쪽 황동 팔·갓·전구
     bucket.add('brass', new THREE.CylinderGeometry(0.008, 0.008, 0.22, 8).rotateX(Math.PI / 2), at(trs(0, e.h / 2 + 0.16, 0.11)));
     bucket.add('brass', new THREE.CylinderGeometry(0.022, 0.03, Math.min(0.5, e.w * 0.45), 16, 1, true).rotateZ(Math.PI / 2), at(trs(0, e.h / 2 + 0.16, 0.22)));
+    bucket.add('bulb', new THREE.SphereGeometry(0.018, 10, 8), at(trs(0, e.h / 2 + 0.14, 0.2)));
     // 그림(매트 안쪽)
     const art = new THREE.Mesh(
       new THREE.PlaneGeometry(e.w - 0.1, e.h - 0.1),
-      new THREE.MeshStandardMaterial({ map: paintArt(e.seed, e.w, e.h), roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ map: paintArt(e.seed, e.w, e.h, ei), roughness: 0.85 }),
     );
-    art.applyMatrix4(at(trs(0, 0, 0.0195)));
+    art.applyMatrix4(at(trs(0, 0, 0.025)));
     art.name = `exhibit:${e.seed}`;
     group.add(art);
     // 명판(오른쪽 아래)
     const plaque = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.24, 0.075),
+      new THREE.PlaneGeometry(0.26, 0.08),
       new THREE.MeshStandardMaterial({ map: plaqueTexture(e.title), roughness: 0.9 }),
     );
     plaque.applyMatrix4(at(trs(e.w / 2 + fw + 0.18, -e.h / 2 + 0.04, 0.006)));
     group.add(plaque);
-  }
+  });
+  const pedestalTitles = ['조형 01 · 매듭', '조형 02 · 겹침', '조형 03 · 고리', '조형 04 · 회전'];
   PEDESTALS.forEach((p, i) => {
     const r = rng.fork(`pedestal-${i}`);
-    const at = (m: THREE.Matrix4) => trs(p.x, 0, p.z, 0, r.range(-0.3, 0.3)).multiply(m);
-    bucket.add('plaster', bevelBox(0.44, 0.95, 0.44, 0.01, 2), at(trs(0, 0.475, 0)));
-    bucket.add('walnut', bevelBox(0.48, 0.03, 0.48, 0.006), at(trs(0, 0.965, 0)));
+    const at = (m: THREE.Matrix4) => trs(p.x, 0, p.z, 0, r.range(-0.25, 0.25)).multiply(m);
+    const bodyH = 0.92 + (i % 2) * 0.06;
+    bucket.add('plaster', bevelBox(0.46, bodyH, 0.46, 0.012, 2), at(trs(0, bodyH / 2, 0)));
+    bucket.add('walnut', bevelBox(0.52, 0.032, 0.52, 0.006), at(trs(0, bodyH + 0.016, 0)));
+    bucket.add('walnut', bevelBox(0.5, 0.04, 0.5, 0.006), at(trs(0, 0.02, 0)));
+    const top = bodyH + 0.032;
     if (p.kind === 'knot') {
-      bucket.add('brass', new THREE.TorusKnotGeometry(0.11, 0.032, 120, 14, 2, 3), at(trs(0, 1.13, 0)));
+      bucket.add('brass', new THREE.TorusKnotGeometry(0.12, 0.034, 140, 16, 2, 3), at(trs(0, top + 0.16, 0)));
     } else if (p.kind === 'stack') {
-      for (let k = 0; k < 4; k++) {
-        const s = 0.12 - k * 0.022;
-        bucket.add(k % 2 ? 'terracotta' : 'ceramic', new THREE.SphereGeometry(s, 24, 16), at(trs(0, 0.98 + 0.1 + k * 0.17 - (0.12 - s), 0)));
+      for (let k = 0; k < 5; k++) {
+        const s = 0.125 - k * 0.018;
+        bucket.add(k % 2 ? 'terracotta' : 'ceramic', new THREE.SphereGeometry(s, 24, 16), at(trs(0, top + 0.08 + k * 0.15 - (0.12 - s), 0)));
       }
     } else {
-      bucket.add('iron', new THREE.TorusGeometry(0.14, 0.018, 12, 48), at(trs(0, 1.16, 0)));
-      bucket.add('brass', new THREE.TorusGeometry(0.1, 0.014, 12, 48), at(trs(0, 1.16, 0, Math.PI / 2, 0)));
+      bucket.add('iron', new THREE.TorusGeometry(0.15, 0.02, 12, 48), at(trs(0, top + 0.18, 0)));
+      bucket.add('brass', new THREE.TorusGeometry(0.11, 0.015, 12, 48), at(trs(0, top + 0.18, 0, Math.PI / 2, 0)));
+      bucket.add('brass', new THREE.TorusGeometry(0.07, 0.012, 10, 40), at(trs(0, top + 0.18, 0, 0, Math.PI / 3)));
     }
+    // 받침대 앞면 작은 명판
+    const pedPlaque = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.22, 0.07),
+      new THREE.MeshStandardMaterial({ map: plaqueTexture(pedestalTitles[i] ?? `조형 0${i + 1}`), roughness: 0.9 }),
+    );
+    pedPlaque.applyMatrix4(at(trs(0, 0.52, 0.235)));
+    group.add(pedPlaque);
   });
   return group;
 }
