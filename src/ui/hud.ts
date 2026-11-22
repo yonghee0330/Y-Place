@@ -64,11 +64,11 @@ export class Hud {
       </div>
       <div class="hud-status" hidden><span class="dot"></span><span class="status-text">다시 연결하고 있어요</span></div>
       <nav class="hud-actions" aria-label="동작">
-        <button type="button" class="action" data-act="sit" aria-label="앉기 (단축키 4)" data-tip="연결 중">${icon('sit')}<span>앉기</span></button>
-        <button type="button" class="action" data-act="nod" aria-label="눈인사 (단축키 1)" data-tip="연결 중">${icon('nod')}<span>눈인사</span></button>
-        <button type="button" class="action" data-act="drink" aria-label="음료 마시기 (단축키 5)" data-tip="연결 중">${icon('drink')}<span>음료</span></button>
-        <button type="button" class="action" data-act="book" aria-label="책 펼치기 (단축키 2)" aria-pressed="false" data-tip="연결 중">${icon('book')}<span>책 펼치기</span></button>
-        <button type="button" class="action" data-act="focus" aria-label="읽기 모드 (단축키 3)" data-tip="연결 중">${icon('focus')}<span>읽기 모드</span></button>
+        <button type="button" class="action" data-act="sit" aria-label="앉기 (단축키 4)" data-tip="연결 중">${icon('sit')}<span class="action-full">앉기</span><span class="action-short">앉기</span></button>
+        <button type="button" class="action" data-act="nod" aria-label="눈인사 (단축키 1)" data-tip="연결 중">${icon('nod')}<span class="action-full">눈인사</span><span class="action-short">인사</span></button>
+        <button type="button" class="action" data-act="drink" aria-label="음료 마시기 (단축키 5)" data-tip="연결 중">${icon('drink')}<span class="action-full">음료</span><span class="action-short">음료</span></button>
+        <button type="button" class="action" data-act="book" aria-label="책 펼치기 (단축키 2)" aria-pressed="false" data-tip="연결 중">${icon('book')}<span class="action-full">책 펼치기</span><span class="action-short">책</span></button>
+        <button type="button" class="action" data-act="focus" aria-label="읽기 모드 (단축키 3)" data-tip="연결 중">${icon('focus')}<span class="action-full">읽기 모드</span><span class="action-short">읽기</span></button>
       </nav>`;
     parent.appendChild(this.root);
     const q = <T extends HTMLElement>(s: string) => this.root.querySelector<T>(s)!;
