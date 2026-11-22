@@ -29,14 +29,16 @@ import { newId, sanitizeSharedBook, type ActionEvent, type Presence, type Player
 import { hasSupabaseConfig, supabaseKakaoApiBase } from './net/supabaseClient';
 import { SupabasePresence } from './net/supabasePresence';
 import { WsPresence } from './net/wsPresence';
-import { loadBook, setCoverApiBase, type ReadingBook } from './reader/book';
+import { loadBook, saveBook, setCoverApiBase, type ReadingBook } from './reader/book';
 import { FocusMode, type FocusReader } from './reader/focus';
+import { CURRENT_WEEK, compactNewReleasesForNpc } from './reader/newReleases';
 import { buildBookstore, type Bookstore } from './scene/bookstore';
 import { BookCard } from './ui/bookCard';
 import { BookBadgeHits } from './ui/bookBadgeHits';
 import { BookPeekSheet } from './ui/bookPeek';
 import { BookSheet } from './ui/bookSheet';
 import { DrinkSheet } from './ui/drinkSheet';
+import { NewReleaseSheet } from './ui/newReleaseSheet';
 import { drinkCooldownMs, drinkToast, isDrinkKind, type DrinkKind } from './net/drink';
 import {
 PORTALS, SEATS, SPAWN, SPAWNS, WORK_DESK, applyLayout, colliders, currentSpaceId, isWorkSpace, spaceCapacity, spaceLabel,
@@ -220,6 +222,7 @@ export async function startApp(
       mySeat: seatLabelKo(movement.seatId),
       myBook: mine?.title ?? null,
       readers,
+      newReleases: compactNewReleasesForNpc(CURRENT_WEEK),
     };
   };
   npcChat.getSceneContext = () => buildNpcScene();
@@ -260,6 +263,17 @@ export async function startApp(
   }
 
   const spaceSheet = new SpaceSheet();
+  const newReleaseSheet = new NewReleaseSheet();
+  const openNewReleases = (focusId?: string) => {
+    sfx.play('tap');
+    newReleaseSheet.open((book) => {
+      saveBook(book);
+      applyBook(book, false);
+      movement.setReading(true);
+      pushState(true);
+      toasts.show(`「${book.title}」을(를) 펼쳤어요`);
+    }, focusId);
+  };
   const hud = new Hud(ui, {
     exit: () => {
       sfx.play('tap');
@@ -278,6 +292,7 @@ export async function startApp(
         { fromMenu: true },
       ));
     },
+    newReleases: () => openNewReleases(),
     sit: () => sitDown(),
     nod: () => nod(),
     drink: () => openDrink(),
@@ -745,6 +760,9 @@ export async function startApp(
       box.userData.portal = p;
       hitGroup.add(box);
     }
+    for (const h of store.spaces[currentSpaceId()]?.newReleaseHits ?? []) {
+      hitGroup.add(h.mesh);
+    }
     hitGroup.updateMatrixWorld(true);
   }
   rebuildHits();
@@ -904,8 +922,15 @@ export async function startApp(
     // 보드·스크린·문·의자처럼 상호작용 가능한 히트를 일반 가구 충돌보다 우선
     const pick = hits.find((h) => {
       const u = h.object.userData;
-      return !!((u.portal && portalUsable(u.portal as PortalDef)) || (u.seats && (u.seats as string[]).length));
+      return !!((u.portal && portalUsable(u.portal as PortalDef))
+        || (u.seats && (u.seats as string[]).length)
+        || u.newReleaseId);
     }) ?? hits[0];
+    const nrId = pick.object.userData.newReleaseId as string | undefined;
+    if (nrId) {
+      openNewReleases(nrId);
+      return;
+    }
     const portal = pick.object.userData.portal as PortalDef | undefined;
     if (portal) {
       if (portalUsable(portal)) askEnterPortal(portal);

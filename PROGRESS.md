@@ -151,6 +151,13 @@
 - 자동 닉네임을 "동네 + 문학 인물"(망원동 안나)에서 편한 닉네임 40개(책벌레·새벽독자·밑줄장인 …)로 바꿈. NPC 독자도 같은 목록에서 서로 겹치지 않게. 말 거는 NPC는 '역할 + 닉네임' 그대로(바리스타 모카, 실험 연구자 하랑 …).
 - 검증: typecheck·build, test:layout, test:presence, e2e 9/9 통과. `scripts/capture-nickname.mjs` 데스크톱(직접 입력·꺾쇠 제거 확인)·모바일(빈칸 → 추천 닉네임) 입장, 이름표·저장값 일치, 콘솔 오류 0. 캡처 `docs/screens/16-nick-*`.
 
+## 2026-11-22 주간 신간 제안 (A2)
+- 운영자가 모은 2026년 11월 3주차 매체 추천 신간을 `src/reader/newReleases.ts`에 넣음(지어내지 않음). 63권, 대표(featured) 표시.
+- 서재·책방에 "이번 주 신간" 나무 받침대(표지 보이게 세운 책 최대 6권 + 간판). 책·간판 클릭 → 신간 시트.
+- HUD 상단 「신간」: 매체 필터·목록·상세·「이 책으로 읽기」(머리 위 제목, 본문 없음).
+- 큐레이터·책방 실험자 안내 답과 Worker 맥락에 `[이번 주 신간 제안]` 요약. 목록 밖 제목은 지어내지 않음.
+- 검증: typecheck(사이트·Worker), build, `scripts/check-new-releases.mjs`(npcchat=local) 통과, 콘솔 오류 0. 캡처 `18-new-release-*`.
+
 ## 2026-11-22 NPC가 지금 공간을 안다 (A1)
 - 대화 요청마다 장면 맥락을 붙인다: 방 이름, 접속자 수/정원, 부천 날씨 문구, 시간대(아침·낮·해질녘·밤), 내 닉네임, 앉은 자리(사람이 읽는 이름), 내가 읽는 책, 지금 책 펼친 사람(닉네임+제목).
 - 프런트: `src/net/npcChat.ts`에 `NpcSceneContext`·정리·자리 이름·로컬 안내 답. `app.ts`가 `buildNpcScene()`으로 모아 `NpcChatSheet`에 넘김. 디버그 `__YONGSEOJEOM.sceneContext()`.

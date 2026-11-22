@@ -2,6 +2,7 @@
 // 주소가 없거나 실패·한도 초과면 브라우저 안의 짧은 안내 답으로 내려간다(콘솔 오류 없음).
 // 대화 내용은 이 탭의 메모리에만 두고 저장하지 않는다.
 // 장면 맥락(인원·읽는 책·날씨·자리)은 닉네임·공개 제목만 보내고, 그 밖의 개인정보는 넣지 않는다.
+import { CURRENT_WEEK, suggestNewReleases } from '../reader/newReleases';
 
 export type TalkNpcId = 'barista' | 'researcher' | 'bookseller' | 'curator' | 'host' | 'docent';
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
@@ -18,6 +19,8 @@ export interface NpcSceneContext {
   mySeat: string | null;
   myBook: string | null;
   readers: { nickname: string; title: string }[];
+  /** 이번 주 신간 제안 요약(이미 문단으로 정리된 문자열) */
+  newReleases?: string | null;
 }
 
 const MAX_TURNS = 12;
@@ -79,7 +82,8 @@ export function sanitizeSceneContext(raw: NpcSceneContext | null | undefined): N
       if (nickname && title) readers.push({ nickname, title });
     }
   }
-  return { space, visitorCount, capacity, weather, timeOfDay, myNickname, mySeat, myBook, readers };
+  const newReleases = typeof raw.newReleases === 'string' ? raw.newReleases.trim().slice(0, 2200) || null : null;
+  return { space, visitorCount, capacity, weather, timeOfDay, myNickname, mySeat, myBook, readers, newReleases };
 }
 
 /** Claude·로컬 안내용 짧은 문단. */
@@ -97,6 +101,7 @@ export function formatSceneContext(ctx: NpcSceneContext): string {
   } else {
     lines.push('- 지금 책 펼친 사람: 없음');
   }
+  if (ctx.newReleases?.trim()) lines.push(ctx.newReleases.trim());
   lines.push('- 위 내용만 사실로 쓰고, 없는 사람·책·개인정보는 지어내지 않는다.');
   return lines.join('\n');
 }
@@ -181,8 +186,11 @@ export function localReply(npc: TalkNpcId, q: string, ctx: NpcSceneContext | nul
   if (has('책방', '매대', '서점')) return '로비 뒷벽 왼쪽 "책방 실험실" 문으로 가면 서가와 매대가 있는 책방이 나와요.';
   if (has('서재', '조용', '열람')) return '로비 오른쪽 벽 첫 번째 "서재" 문으로 가면 긴 열람 테이블이 있는 조용한 방이 나와요.';
   if (has('방', '어디', '공간', '구경')) return '여기는 메타공간 실험실이에요. 로비에서 책방 실험실·전시실(뒷벽), 서재·작은 모임방·개인 작업실(오른쪽 벽)로 갈 수 있어요. 위쪽 "공간" 버튼으로도 옮길 수 있어요.';
+  if (has('신간', '이번주', '이번 주', '추천책', '책추천', '뭐읽을', '읽을책', '추천해')) {
+    return localNewReleaseReply(npc, q);
+  }
   if (has('아이디어', '추천', '사례', '기획', '해볼', '해 볼', '할수', '할 수', '뭘', '무엇')) return ROLE_TIP[npc];
-  if (has('책', '읽')) return '"책 펼치기"로 읽는 책 제목을 머리 위에 띄울 수 있고, "읽기 모드"를 켜면 집중해서 읽는 화면이 돼요.';
+  if (has('책', '읽')) return '"책 펼치기"로 읽는 책 제목을 머리 위에 띄울 수 있고, "읽기 모드"를 켜면 집중해서 읽는 화면이 돼요. 위쪽 "신간" 버튼으로 이번 주 매체 추천도 볼 수 있어요.';
   if (has('이동', '걷', '움직', '조작', '시점', '카메라')) return '바닥을 누르면 걸어가고, 화면을 드래그하면 시점이 돌아요. Q·E 키로도 돌릴 수 있어요.';
   if (has('안녕', '반가', '처음')) return ROLE_HELLO[npc];
   return ROLE_FALLBACK[npc];
@@ -200,11 +208,20 @@ const ROLE_HELLO: Record<TalkNpcId, string> = {
 const ROLE_TIP: Record<TalkNpcId, string> = {
   barista: '로비에서는 쉬어 가는 자리를 시험하고 있어요. 안마 의자나 소파에 앉아 보세요.',
   researcher: '방마다 하나씩 시험해요. 책방에서는 진열, 서재에서는 큐레이션, 모임방에서는 둘러앉기, 전시실에서는 작품 보기예요. 궁금한 방부터 들어가 보세요.',
-  bookseller: '지금은 "책 펼치기"로 읽는 책 제목을 머리 위에 띄워 서로 무슨 책을 읽는지 볼 수 있어요. 주제 매대나 추천 쪽지는 아직 없지만 시험해 볼 만한 아이디어예요.',
-  curator: '한 주제로 서너 권을 묶고, 왜 묶었는지 한 줄을 붙이는 게 큐레이션의 시작이에요. 서가 한 칸을 주제 하나로 생각해 보세요.',
+  bookseller: '위쪽 "신간" 버튼이나 매대 쪽 신간 받침대를 누르면 이번 주 매체가 고른 책을 볼 수 있어요. 기분이나 주제를 말해 주시면 그중에서 골라 드릴게요.',
+  curator: '이번 주 언론·서점 MD 추천 신간을 서재 받침대와 "신간" 목록에 모아 두었어요. 돌봄·시·과학처럼 관심사를 말해 주시면 그중에서 골라 드릴게요.',
   host: '처음엔 다섯 명 이하, 한 시간, 질문 하나로 시작하는 모임이 꾸리기 쉬워요. 이 방 원탁이 딱 다섯 자리예요.',
   docent: '전시는 제목 하나와 작품 순서로 이야기를 만들어요. 이 방은 뒷벽에서 시작해 옆벽으로 돌아 나오는 순서예요.',
 };
+
+function localNewReleaseReply(npc: TalkNpcId, q: string): string {
+  const picks = suggestNewReleases(q, 3, CURRENT_WEEK);
+  const list = picks.map((b) => `「${b.title}」(${b.author})`).join(', ');
+  const tip = npc === 'curator' || npc === 'bookseller'
+    ? '위쪽 "신간" 버튼이나 받침대의 책을 누르면 소개와 출처를 볼 수 있어요.'
+    : '위쪽 "신간" 버튼에서 전체 목록을 볼 수 있어요.';
+  return `이번 주 매체가 고른 신간 중에서요. ${list} 어때요? ${tip}`;
+}
 const ROLE_FALLBACK: Record<TalkNpcId, string> = {
   barista: '지금은 깊은 이야기는 어렵지만, 방 위치·자리·음료·작업실 이야기는 안내해 드릴 수 있어요.',
   researcher: '지금은 짧은 안내만 할 수 있어요. 어떤 방에서 무엇을 시험하는지 물어봐 주세요.',

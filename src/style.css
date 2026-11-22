@@ -920,3 +920,34 @@ button.pill:hover { background: rgba(36, 37, 31, 0.72); }
 .start-nick-note { margin: 6px 0 0; font-size: 11.5px; line-height: 1.5; color: rgba(236, 220, 190, .6); }
 .nick-input { flex: 1; min-width: 0; min-height: 40px; padding: 0 10px; border: 1px solid #d8ccb6; border-radius: 6px; font: 600 15px/1 var(--serif); background: #fffaf0; color: inherit; }
 @media (max-width: 480px) { .start-nick { margin-bottom: 14px; } .start-copy { margin: 10px 0 14px; } }
+
+/* 이번 주 신간 시트 */
+.new-release-sheet { width: min(520px, calc(100vw - 24px)); }
+.new-release-sheet .sheet-body { display: flex; flex-direction: column; gap: 12px; max-height: min(78vh, 640px); }
+.nr-filters {
+  display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+}
+.nr-filter {
+  flex: none; appearance: none; cursor: pointer; border: 1px solid rgba(36, 37, 31, 0.14);
+  background: #fff; color: #5b4f40; border-radius: 999px; padding: 7px 12px; font: 500 13px/1 var(--sans);
+}
+.nr-filter.is-on { background: var(--green); color: var(--paper); border-color: transparent; }
+.nr-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 0; flex: 1; padding-right: 2px; }
+.nr-item {
+  appearance: none; cursor: pointer; text-align: left; border: 1px solid rgba(36, 37, 31, 0.1);
+  background: #fffaf2; border-radius: 10px; padding: 12px 14px; display: grid; gap: 3px; color: inherit;
+}
+.nr-item:hover { border-color: rgba(192, 138, 78, 0.55); background: #fff; }
+.nr-item-title { font: 700 15px/1.35 var(--serif); }
+.nr-item-meta { font-size: 12.5px; color: #6a5c4c; }
+.nr-item-src { font-size: 11.5px; color: #9a876c; }
+.nr-detail { display: flex; flex-direction: column; gap: 8px; }
+.nr-back { appearance: none; align-self: start; border: 0; background: transparent; color: #8a5a22; font: 600 13px/1 var(--sans); cursor: pointer; padding: 4px 0; }
+.nr-detail-title { margin: 0; font: 700 20px/1.35 var(--serif); }
+.nr-detail-meta, .nr-detail-src { margin: 0; font-size: 13px; color: #6a5c4c; line-height: 1.5; }
+.nr-detail-blurb { margin: 4px 0 0; font-size: 14px; line-height: 1.7; color: #3a3228; white-space: pre-wrap; word-break: keep-all; }
+@media (max-width: 480px) {
+  .nr-item-title { font-size: 14px; }
+  .new-release-sheet .sheet-body { max-height: min(85vh, 720px); }
+}

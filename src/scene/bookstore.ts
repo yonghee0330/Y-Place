@@ -30,12 +30,14 @@ import { buildWorkroom } from './props/workroom';
 import { buildWindows } from './props/windows';
 import { buildPartitions, buildWingbackArmchair } from './props/zones';
 import { buildWindowRain, type WindowRain } from './windowRain';
+import { buildNewReleaseStand, type NewReleaseHit } from './props/newReleaseStand';
 
 export interface SpaceView {
   id: SpaceId;
   group: THREE.Group;
   floor: THREE.Object3D;
   portalGlow: PortalGlow;
+  newReleaseHits: NewReleaseHit[];
 }
 
 export interface Bookstore {
@@ -113,17 +115,19 @@ function buildOneSpace(
     buildPlant(bucket, rng.fork(`${id}-cplant`), trs(COUNTER.x + 0.1, COUNTER.h, COUNTER.z - 0.1), 'bush', 1.0);
   }
   buildWallDecor(bucket, rng);
+  const newRelease = buildNewReleaseStand(bucket, books, rng.fork(`${id}-nr`));
 
   group.add(bucket.build(mats, { castShadow: (n) => !NO_SHADOW.has(n) }));
   group.add(books.build(mats.bookCover as THREE.MeshStandardMaterial, mats.bookPages));
   group.add(portalGlow.group);
   group.add(buildIdentity());
+  for (const extra of newRelease.extras) group.add(extra);
   const menu = buildCoffeeMenu();
   if (menu) group.add(menu);
   const floor = group.getObjectByName('merged:floor')!;
   floor.name = `merged:floor:${id}`;
   return {
-    view: { id, group, floor, portalGlow },
+    view: { id, group, floor, portalGlow, newReleaseHits: newRelease.hits },
     books: books.items.length,
     planks,
     lamps,
