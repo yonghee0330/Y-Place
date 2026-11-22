@@ -1,5 +1,5 @@
 // NPC와 대화하는 창. 방문자 말 → NPC 답(Claude 또는 안내 답). 대화는 이 탭 메모리에만 남는다.
-import { askNpc, npcChatIsAi, type ChatTurn, type TalkNpcId } from '../net/npcChat';
+import { askNpc, npcChatIsAi, type ChatTurn, type NpcSceneContext, type TalkNpcId } from '../net/npcChat';
 import { Sheet } from './sheet';
 
 const GREETING: Record<TalkNpcId, string> = {
@@ -22,6 +22,8 @@ export class NpcChatSheet {
   private busy = false;
   /** 답을 받으면 말풍선처럼 NPC 머리 위에 잠깐 보여 줄 수 있게 알린다 */
   onReply: ((npc: TalkNpcId, text: string) => void) | null = null;
+  /** 보낼 때마다 지금 방·인원·날씨·자리·읽는 책을 모은다(개인정보는 닉네임만). */
+  getSceneContext: (() => NpcSceneContext | null) | null = null;
 
   constructor() {
     this.sheet.el.classList.add('chat-sheet');
@@ -97,7 +99,7 @@ export class NpcChatSheet {
     this.busy = true;
     this.send.disabled = true;
     this.render();
-    const reply = await askNpc(npc, h);
+    const reply = await askNpc(npc, h, this.getSceneContext?.() ?? null);
     h.push({ role: 'assistant', content: reply.text });
     // 탭 메모리도 너무 길어지지 않게
     if (h.length > 40) h.splice(0, h.length - 40);

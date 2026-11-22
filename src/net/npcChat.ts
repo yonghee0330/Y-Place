@@ -1,10 +1,24 @@
 // NPC 대화 어댑터: 브라우저 → NPC 대화 Worker(Claude) → 답.
 // 주소가 없거나 실패·한도 초과면 브라우저 안의 짧은 안내 답으로 내려간다(콘솔 오류 없음).
 // 대화 내용은 이 탭의 메모리에만 두고 저장하지 않는다.
+// 장면 맥락(인원·읽는 책·날씨·자리)은 닉네임·공개 제목만 보내고, 그 밖의 개인정보는 넣지 않는다.
 
 export type TalkNpcId = 'barista' | 'researcher' | 'bookseller' | 'curator' | 'host' | 'docent';
 export interface ChatTurn { role: 'user' | 'assistant'; content: string }
 export interface NpcReply { text: string; source: 'ai' | 'local' }
+
+/** NPC에게 넘기는 "지금 이 순간" 장면 정보(공개 가능한 것만). */
+export interface NpcSceneContext {
+  space: string;
+  visitorCount: number;
+  capacity: number;
+  weather: string;
+  timeOfDay: string;
+  myNickname: string;
+  mySeat: string | null;
+  myBook: string | null;
+  readers: { nickname: string; title: string }[];
+}
 
 const MAX_TURNS = 12;
 const MAX_CHARS = 300;
@@ -21,6 +35,72 @@ export function npcChatIsAi(): boolean {
   return endpoint() !== null;
 }
 
+/** 자리 id → 사람이 읽는 이름. 모르는 id는 그냥 "자리". */
+export function seatLabelKo(id: string | null | undefined): string | null {
+  if (!id) return null;
+  if (id.startsWith('massage-')) return `창가 안마 의자 ${id.slice(-1)}`;
+  if (id.startsWith('sofa-')) return `초록 소파 ${id.slice(-1)}번`;
+  if (id.startsWith('bench-')) return `벤치 ${id.slice(-1)}번`;
+  if (id.startsWith('cafe-')) return '카페 테이블 의자';
+  if (id.startsWith('arm-')) return '안락의자';
+  if (id.startsWith('chair-')) return `열람 테이블 의자 ${id.slice(-1)}`;
+  if (id.startsWith('circle-')) return `원탁 ${id.slice(-1)}번`;
+  if (id === 'desk-1') return '책상 의자';
+  if (id.startsWith('bar-') || id.startsWith('counter-')) return '카운터 스툴';
+  return '자리';
+}
+
+export function dayPhaseLabelKo(phase: 'morning' | 'day' | 'sunset' | 'night'): string {
+  if (phase === 'morning') return '아침';
+  if (phase === 'sunset') return '해질녘';
+  if (phase === 'night') return '밤';
+  return '낮';
+}
+
+/** 서버·로컬 안내에 쓰기 전에 길이·개수를 자른다. */
+export function sanitizeSceneContext(raw: NpcSceneContext | null | undefined): NpcSceneContext | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const clip = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const space = clip(raw.space, 40);
+  const weather = clip(raw.weather, 40);
+  const timeOfDay = clip(raw.timeOfDay, 10);
+  const myNickname = clip(raw.myNickname, 20);
+  if (!space || !weather || !timeOfDay || !myNickname) return null;
+  const visitorCount = Math.max(1, Math.min(20, Math.floor(Number(raw.visitorCount) || 1)));
+  const capacity = Math.max(1, Math.min(20, Math.floor(Number(raw.capacity) || visitorCount)));
+  const mySeat = raw.mySeat == null ? null : clip(raw.mySeat, 40) || null;
+  const myBook = raw.myBook == null ? null : clip(raw.myBook, 120) || null;
+  const readers: { nickname: string; title: string }[] = [];
+  if (Array.isArray(raw.readers)) {
+    for (const r of raw.readers.slice(0, 12)) {
+      if (!r || typeof r !== 'object') continue;
+      const nickname = clip((r as { nickname?: unknown }).nickname, 20);
+      const title = clip((r as { title?: unknown }).title, 120);
+      if (nickname && title) readers.push({ nickname, title });
+    }
+  }
+  return { space, visitorCount, capacity, weather, timeOfDay, myNickname, mySeat, myBook, readers };
+}
+
+/** Claude·로컬 안내용 짧은 문단. */
+export function formatSceneContext(ctx: NpcSceneContext): string {
+  const lines = [
+    `[지금 이 순간]`,
+    `- 방: ${ctx.space} (지금 ${ctx.visitorCount}명 / 정원 ${ctx.capacity}명)`,
+    `- 날씨·시간: ${ctx.weather}, ${ctx.timeOfDay}`,
+    `- 이 방문자: 닉네임 "${ctx.myNickname}"` +
+      (ctx.mySeat ? `, ${ctx.mySeat}에 앉아 있음` : ', 서 있음') +
+      (ctx.myBook ? `, 읽는 책 "${ctx.myBook}"` : ''),
+  ];
+  if (ctx.readers.length) {
+    lines.push(`- 지금 책 펼친 사람: ${ctx.readers.map((r) => `${r.nickname}「${r.title}」`).join(', ')}`);
+  } else {
+    lines.push('- 지금 책 펼친 사람: 없음');
+  }
+  lines.push('- 위 내용만 사실로 쓰고, 없는 사람·책·개인정보는 지어내지 않는다.');
+  return lines.join('\n');
+}
+
 /** 서버로 보낼 최근 대화(첫 줄은 방문자 말로 맞춘다) */
 function trimHistory(history: ChatTurn[]): ChatTurn[] {
   let h = history.slice(-MAX_TURNS).map((t) => ({ role: t.role, content: t.content.slice(0, MAX_CHARS) }));
@@ -28,39 +108,75 @@ function trimHistory(history: ChatTurn[]): ChatTurn[] {
   return h;
 }
 
-export async function askNpc(npc: TalkNpcId, history: ChatTurn[]): Promise<NpcReply> {
+export async function askNpc(
+  npc: TalkNpcId,
+  history: ChatTurn[],
+  scene: NpcSceneContext | null = null,
+): Promise<NpcReply> {
   const url = endpoint();
   const last = history[history.length - 1]?.content ?? '';
-  if (!url) return { text: localReply(npc, last), source: 'local' };
+  const ctx = sanitizeSceneContext(scene);
+  if (!url) return { text: localReply(npc, last, ctx), source: 'local' };
   const ctrl = new AbortController();
   const timer = window.setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
+    const body: { npc: TalkNpcId; messages: ChatTurn[]; context?: NpcSceneContext } = {
+      npc,
+      messages: trimHistory(history),
+    };
+    if (ctx) body.context = ctx;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ npc, messages: trimHistory(history) }),
+      body: JSON.stringify(body),
       signal: ctrl.signal,
     });
     if (res.status === 429) return { text: '지금은 이야기 나누는 분이 많아요. 조금 있다가 다시 말 걸어 주세요.', source: 'local' };
-    if (!res.ok) return { text: localReply(npc, last), source: 'local' };
+    if (!res.ok) return { text: localReply(npc, last, ctx), source: 'local' };
     const data = (await res.json()) as { reply?: unknown };
-    if (typeof data.reply !== 'string' || !data.reply.trim()) return { text: localReply(npc, last), source: 'local' };
+    if (typeof data.reply !== 'string' || !data.reply.trim()) return { text: localReply(npc, last, ctx), source: 'local' };
     return { text: data.reply.trim(), source: 'ai' };
   } catch {
-    return { text: localReply(npc, last), source: 'local' };
+    return { text: localReply(npc, last, ctx), source: 'local' };
   } finally {
     window.clearTimeout(timer);
   }
 }
 
-/** 서버가 없을 때의 짧은 안내 답(키워드). */
-export function localReply(npc: TalkNpcId, q: string): string {
+/** 서버가 없을 때의 짧은 안내 답(키워드). 장면 맥락이 있으면 인원·날씨·자리·읽는 책에 답한다. */
+export function localReply(npc: TalkNpcId, q: string, ctx: NpcSceneContext | null = null): string {
   const s = q.replace(/\s+/g, '');
   const has = (...k: string[]) => k.some((w) => s.includes(w));
+  if (ctx) {
+    // 읽는 책 질문을 인원보다 먼저(「저 사람」에 '사람'이 들어가 인원으로 새는 것 방지)
+    if (has('뭐읽', '무슨책', '읽고있', '읽는책', '저사람', '누가읽', '다들읽')) {
+      if (!ctx.readers.length) return '지금은 책을 펼친 분이 없어요. "책 펼치기"로 제목을 머리 위에 띄울 수 있어요.';
+      const list = ctx.readers.map((r) => `${r.nickname} 님은 「${r.title}」`).join(', ');
+      return `지금 책 펼친 분은 ${list}예요.`;
+    }
+    if (has('몇명', '몇분', '인원', '접속', '누구있', '누가있', '혼자', '사람들')) {
+      if (ctx.visitorCount <= 1) return `지금은 ${ctx.space}에 당신만 계세요. 정원은 ${ctx.capacity}명이에요.`;
+      return `지금 ${ctx.space}에는 ${ctx.visitorCount}명 계세요(정원 ${ctx.capacity}명).`;
+    }
+    if (has('날씨', '비오', '눈오', '맑아', '맑은', '날씨어때')) {
+      return `바깥은 ${ctx.weather}이고, 지금은 ${ctx.timeOfDay}이에요.`;
+    }
+    if (has('몇시', '시간대', '아침이', '저녁이', '밤이냐', '밤이야')) {
+      return `지금은 ${ctx.timeOfDay}이에요. 바깥은 ${ctx.weather}입니다.`;
+    }
+    if (has('내자리', '내가앉', '어디에앉', '앉은자리', '내위치')) {
+      return ctx.mySeat
+        ? `지금은 ${ctx.mySeat}에 앉아 계세요.`
+        : '지금은 서 계세요. 의자나 소파를 누르면 앉을 수 있어요.';
+    }
+  }
   if (has('커피', '음료', '녹차', '홍차', '찻', '마시', '목말')) return '아래 "음료" 버튼을 누르면 물·커피·차를 골라 마시는 동작을 할 수 있어요. 진짜 커피는 못 드려서 아쉬워요.';
   if (has('작업실', '작업', '집중', '타이머')) return '로비 오른쪽 벽 맨 앞의 "개인 작업실" 문으로 들어가 1~4번 방을 고르면 돼요. 한 방에 한 명이고, 타이머와 집중 모드를 쓸 수 있어요.';
   if (has('모임방', '모임')) return '로비 오른쪽 벽 가운데 "작은 모임방" 문으로 가면 둥근 테이블이 있는 방이 나와요. 여섯 명까지 함께 있을 수 있어요.';
-  if (has('앉', '의자', '소파', '안마')) return '의자나 소파를 누르면 빈 자리로 걸어가서 앉아요. 로비 창가에는 안마 의자도 두 개 있어요.';
+  if (has('앉', '의자', '소파', '안마')) {
+    if (ctx?.mySeat) return `지금은 ${ctx.mySeat}에 앉아 계세요. 다른 의자나 소파를 누르면 그쪽으로 옮겨 앉아요.`;
+    return '의자나 소파를 누르면 빈 자리로 걸어가서 앉아요. 로비 창가에는 안마 의자도 두 개 있어요.';
+  }
   if (has('전시', '작품', '그림')) return '로비 뒷벽 오른쪽 "전시실" 문으로 가면 작품 여덟 점과 조형물이 있어요. 가운데 벤치에 앉아 천천히 보셔도 돼요.';
   if (has('책방', '매대', '서점')) return '로비 뒷벽 왼쪽 "책방 실험실" 문으로 가면 서가와 매대가 있는 책방이 나와요.';
   if (has('서재', '조용', '열람')) return '로비 오른쪽 벽 첫 번째 "서재" 문으로 가면 긴 열람 테이블이 있는 조용한 방이 나와요.';

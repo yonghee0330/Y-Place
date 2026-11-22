@@ -23,6 +23,7 @@ import { Rng } from './core/rng';
 import { MANAGER_COLOR, MANAGER_NICKNAME } from './core/manager';
 import { loadProfile, loadSettings, saveSettings, type Profile, type Settings } from './core/storage';
 import { LocalPresence } from './net/localPresence';
+import { dayPhaseLabelKo, seatLabelKo, type NpcSceneContext } from './net/npcChat';
 import { withSuffix } from './net/nickname';
 import { newId, sanitizeSharedBook, type ActionEvent, type Presence, type PlayerState, type SharedBook } from './net/presence';
 import { hasSupabaseConfig, supabaseKakaoApiBase } from './net/supabaseClient';
@@ -200,6 +201,28 @@ export async function startApp(
   let instance = params.instance;
   let connected = false;
   let peers = new Map<string, PlayerState>();
+  /** NPC 대화에 넘길 지금 방 장면(닉네임·공개 책 제목만). */
+  const buildNpcScene = (): NpcSceneContext => {
+    const readers: { nickname: string; title: string }[] = [];
+    const mine = sharedBook();
+    if (mine?.title) readers.push({ nickname: sessionNick, title: mine.title });
+    for (const p of peers.values()) {
+      if (p.book?.title) readers.push({ nickname: p.nickname, title: p.book.title });
+    }
+    const phase = dayPhaseOf(params.hour ?? kstHour());
+    return {
+      space: spaceLabel(currentSpaceId()),
+      visitorCount: peers.size + 1,
+      capacity: spaceCapacity(currentSpaceId()),
+      weather: weather.label,
+      timeOfDay: dayPhaseLabelKo(phase),
+      myNickname: sessionNick,
+      mySeat: seatLabelKo(movement.seatId),
+      myBook: mine?.title ?? null,
+      readers,
+    };
+  };
+  npcChat.getSceneContext = () => buildNpcScene();
 
   // ---------- 소리 ----------
   // AudioContext는 사용자가 처음 누른 뒤에만 만든다. 지난번에 켜 두었으면 첫 클릭·키 입력에서 다시 켠다.
@@ -1110,6 +1133,7 @@ export async function startApp(
     setReading: (on: boolean) => movement.setReading(on),
     meVisible: () => me.root.visible,
     talk: () => ({ near: nearTalk?.def.id ?? null, open: npcChat.talkingTo, prompt: !talkPrompt.hidden }),
+    sceneContext: () => buildNpcScene(),
     talkNpcPos: (id: string) => { const n = talkNpcs.find((t) => t.def.id === id); return n ? n.actor.root.position.toArray() : null; },
     debugLook: (look: Parameters<typeof me.avatar.setLook>[0]) => me.avatar.setLook(look),
     walkTo: (x: number, z: number) => movement.walkTo({ x, z }),

@@ -1,7 +1,7 @@
 // Y-Place NPC 대화 서버. 브라우저 → 이 Worker → Claude API.
 // API 키는 Worker 비밀값(ANTHROPIC_API_KEY)에만 있고, 대화 내용은 저장·기록하지 않는다.
 import Anthropic from '@anthropic-ai/sdk';
-import { PERSONAS, isNpcId } from './personas';
+import { PERSONAS, formatLiveContext, isNpcId } from './personas';
 
 interface Env {
   ANTHROPIC_API_KEY: string;
@@ -79,7 +79,7 @@ export default {
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
     if (limited(ip)) return json({ error: 'rate_limited' }, 429, headers);
 
-    let body: { npc?: unknown; messages?: unknown };
+    let body: { npc?: unknown; messages?: unknown; context?: unknown };
     try {
       body = await req.json();
     } catch {
@@ -88,6 +88,8 @@ export default {
     if (!isNpcId(body.npc)) return json({ error: 'bad_request' }, 400, headers);
     const messages = readMessages(body.messages);
     if (!messages) return json({ error: 'bad_request' }, 400, headers);
+    // 장면 맥락은 선택. 형식이 틀려도 대화는 되고, 캐시된 성격 뒤에만 붙인다(요청마다 바뀌므로 캐시 안 함).
+    const live = formatLiveContext(body.context);
 
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 25_000 });
     try {
@@ -97,13 +99,17 @@ export default {
       const fallback = model.startsWith('claude-haiku')
         ? {}
         : { betas: ['server-side-fallback-2026-07-01'] as Anthropic.Beta.AnthropicBeta[], fallbacks: 'default' as const };
+      const system: Anthropic.Beta.BetaTextBlockParam[] = [
+        { type: 'text', text: PERSONAS[body.npc].system, cache_control: { type: 'ephemeral' } },
+      ];
+      if (live) system.push({ type: 'text', text: live });
       const res = await client.beta.messages.create({
         model,
         // 짧은 대사지만 생각 토큰까지 들어가므로 여유를 둔다
         max_tokens: 4096,
         output_config: { effort },
         ...fallback,
-        system: [{ type: 'text', text: PERSONAS[body.npc].system, cache_control: { type: 'ephemeral' } }],
+        system,
         messages,
       });
       if (res.stop_reason === 'refusal') {

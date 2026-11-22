@@ -150,3 +150,11 @@
 - 설정 시트: '다시 뽑기' → 닉네임 직접 고치는 입력 칸 + '추천'.
 - 자동 닉네임을 "동네 + 문학 인물"(망원동 안나)에서 편한 닉네임 40개(책벌레·새벽독자·밑줄장인 …)로 바꿈. NPC 독자도 같은 목록에서 서로 겹치지 않게. 말 거는 NPC는 '역할 + 닉네임' 그대로(바리스타 모카, 실험 연구자 하랑 …).
 - 검증: typecheck·build, test:layout, test:presence, e2e 9/9 통과. `scripts/capture-nickname.mjs` 데스크톱(직접 입력·꺾쇠 제거 확인)·모바일(빈칸 → 추천 닉네임) 입장, 이름표·저장값 일치, 콘솔 오류 0. 캡처 `docs/screens/16-nick-*`.
+
+## 2026-11-22 NPC가 지금 공간을 안다 (A1)
+- 대화 요청마다 장면 맥락을 붙인다: 방 이름, 접속자 수/정원, 부천 날씨 문구, 시간대(아침·낮·해질녘·밤), 내 닉네임, 앉은 자리(사람이 읽는 이름), 내가 읽는 책, 지금 책 펼친 사람(닉네임+제목).
+- 프런트: `src/net/npcChat.ts`에 `NpcSceneContext`·정리·자리 이름·로컬 안내 답. `app.ts`가 `buildNpcScene()`으로 모아 `NpcChatSheet`에 넘김. 디버그 `__YONGSEOJEOM.sceneContext()`.
+- Worker: `context` 선택 필드. 성격 프롬프트는 캐시 유지, [지금 이 순간]만 요청마다 붙임. 형식 오류여도 대화는 되고 맥락만 무시.
+- 개인정보: 닉네임·공개 책 제목·자리 이름·날씨·인원만. 실명·연락처·좌표 숫자는 보내지 않음.
+- 검증: typecheck(사이트·Worker), build 통과. 로컬 안내 답 유닛 확인(인원·날씨·자리·읽는 책). `scripts/check-npc-context.mjs`(npcchat=local): 카페 의자 착석 후 바리스타에게 네 질문, 콘솔 오류 0, 캡처 `17-npc-context-chat.png`.
+- 공개 AI 답은 Worker 재배포 + Pages 배포 후 확인.
