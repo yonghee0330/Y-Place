@@ -191,7 +191,7 @@ export function localReply(npc: TalkNpcId, q: string, ctx: NpcSceneContext | nul
   }
   if (has('아이디어', '추천', '사례', '기획', '해볼', '해 볼', '할수', '할 수', '뭘', '무엇')) return ROLE_TIP[npc];
   if (has('책', '읽')) return '"책 펼치기"로 읽는 책 제목을 머리 위에 띄울 수 있고, "읽기 모드"를 켜면 집중해서 읽는 화면이 돼요. 위쪽 "신간" 버튼으로 이번 주 매체 추천도 볼 수 있어요.';
-  if (has('이동', '걷', '움직', '조작', '시점', '카메라')) return '바닥을 누르면 걸어가고, 화면을 드래그하면 시점이 돌아요. Q·E 키로도 돌릴 수 있어요.';
+  if (has('이동', '걷', '움직', '조작', '시점', '카메라')) return '바닥을 누르면 걸어가고, 화면을 드래그하면 시점이 위아래·좌우로 돌아요. Q·E는 좌우, R·F는 위아래예요.';
   if (has('안녕', '반가', '처음')) return ROLE_HELLO[npc];
   return ROLE_FALLBACK[npc];
 }

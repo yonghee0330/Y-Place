@@ -42,21 +42,23 @@ export function applyPreset(cam: THREE.PerspectiveCamera, preset: CamPreset): TH
 
 
 const DEG = Math.PI / 180;
-const MIN_PITCH = 6 * DEG, MAX_PITCH = 74 * DEG;
+/** 음수면 아바타보다 아래에서 위를 올려다봄(선반·천장 탐색) */
+const MIN_PITCH = -12 * DEG, MAX_PITCH = 68 * DEG;
+const DEFAULT_PITCH = 22 * DEG;
 /** 벽·가구 때문에 뒤로 못 물러날 때 이 각도까지 위로 올라가 내려다본다 */
-const LIFT_PITCH = 58 * DEG;
-export const MIN_DIST = 1.35;
+const LIFT_PITCH = 48 * DEG;
+export const MIN_DIST = 1.2;
 
-/** 현재 방 크기에 맞는 최대 오빗 거리 — 방 대각선의 ~38%, 허브도 크게 나가지 않음. */
+/** 현재 방 크기에 맞는 최대 오빗 거리 — 방 대각선의 ~48%. */
 export function maxOrbitDist(): number {
   const span = Math.hypot(ROOM.w, ROOM.d);
-  return THREE.MathUtils.clamp(span * 0.38, 2.6, 6.2);
+  return THREE.MathUtils.clamp(span * 0.48, 3.0, 8.0);
 }
 
 /** 방 안에서 아바타·공간을 잘 담는 기본 거리. */
 export function idealOrbitDist(): number {
   const span = Math.hypot(ROOM.w, ROOM.d);
-  return THREE.MathUtils.clamp(span * 0.28, 2.0, 3.6);
+  return THREE.MathUtils.clamp(span * 0.32, 2.2, 4.2);
 }
 
 /**
@@ -65,11 +67,11 @@ export function idealOrbitDist(): number {
  */
 export class FollowCamera {
   yaw: number;
-  pitch = 28 * DEG;
+  pitch = DEFAULT_PITCH;
   distance = 3.2;
   readonly target = new THREE.Vector3();
   private goal = new THREE.Vector3();
-  private shown = { yaw: 0, pitch: 28 * DEG, dist: 3.2 };
+  private shown = { yaw: 0, pitch: DEFAULT_PITCH, dist: 3.2 };
   reducedMotion = false;
 
   constructor(private cam: THREE.PerspectiveCamera, yaw: number) {
@@ -78,7 +80,7 @@ export class FollowCamera {
   }
 
   /** 바라볼 높이(아바타 발 기준). 세로 화면에서는 더 위를 봐서 바닥이 화면을 덮지 않게 한다. */
-  lookHeight = 0.72;
+  lookHeight = 0.86;
 
   /** 따라갈 점 */
   follow(p: THREE.Vector3, snap = false): void {
@@ -96,11 +98,13 @@ export class FollowCamera {
     const now = performance.now();
     const gap = Math.max(8, now - this.lastDrag);
     this.lastDrag = now;
-    const yawStep = -dx * 0.006;
+    const yawStep = -dx * 0.0062;
+    const pitchStep = dy * 0.0065;
     this.yaw += yawStep;
-    this.pitch = THREE.MathUtils.clamp(this.pitch + dy * 0.005, MIN_PITCH, MAX_PITCH);
+    this.pitch = THREE.MathUtils.clamp(this.pitch + pitchStep, MIN_PITCH, MAX_PITCH);
     // 관성 속도(rad/s). 이벤트 간격이 길면 멈췄다가 놓은 것으로 본다.
     this.yawVel = gap < 80 ? THREE.MathUtils.clamp(yawStep / (gap / 1000), -6, 6) : 0;
+    this.pitchVel = gap < 80 ? THREE.MathUtils.clamp(pitchStep / (gap / 1000), -4, 4) : 0;
   }
 
   /** 키보드(Q·E) 연속 회전. dir: -1 왼쪽, 1 오른쪽 */
@@ -108,6 +112,13 @@ export class FollowCamera {
     if (!dir) return;
     this.yaw += dir * 1.9 * dt;
     this.yawVel = 0;
+  }
+
+  /** 키보드(R·F) 상하 기울기. dir: +1 위에서 내려다봄, -1 수평·올려다봄 */
+  tilt(dir: number, dt: number): void {
+    if (!dir) return;
+    this.pitch = THREE.MathUtils.clamp(this.pitch + dir * 1.35 * dt, MIN_PITCH, MAX_PITCH);
+    this.pitchVel = 0;
   }
 
   zoom(factor: number): void {
@@ -119,6 +130,7 @@ export class FollowCamera {
     const max = maxOrbitDist();
     if (preferIdeal || this.distance > max) this.distance = idealOrbitDist();
     this.distance = THREE.MathUtils.clamp(this.distance, MIN_DIST, max);
+    if (preferIdeal) this.pitch = DEFAULT_PITCH;
     this.pitch = THREE.MathUtils.clamp(this.pitch, MIN_PITCH, MAX_PITCH);
     this.shown.dist = this.distance;
     this.shown.pitch = this.pitch;
@@ -141,7 +153,9 @@ export class FollowCamera {
   /** 뒤가 막혔을 때 위로 올라가는 정도(0..1, 부드럽게 변함) */
   private lift = 0;
   private yawVel = 0;
+  private pitchVel = 0;
   private lastDrag = 0;
+  private readonly lookAtScratch = new THREE.Vector3();
 
   update(dt: number): void {
     const k = (rate: number) => (this.reducedMotion ? 1 : 1 - Math.exp(-rate * dt));
@@ -149,16 +163,23 @@ export class FollowCamera {
     // 방이 바뀌었거나 줌이 한도를 넘으면 끌어당긴다
     if (this.distance > maxD) this.distance = maxD;
     // 손을 뗀 뒤 관성 회전(드래그 중에는 rotate가 매번 덮어씀)
-    if (performance.now() - this.lastDrag > 60 && Math.abs(this.yawVel) > 0.01 && !this.reducedMotion) {
-      this.yaw += this.yawVel * dt;
-      this.yawVel *= Math.exp(-5 * dt);
+    if (performance.now() - this.lastDrag > 60 && !this.reducedMotion) {
+      if (Math.abs(this.yawVel) > 0.01) {
+        this.yaw += this.yawVel * dt;
+        this.yawVel *= Math.exp(-5 * dt);
+      } else this.yawVel = 0;
+      if (Math.abs(this.pitchVel) > 0.01) {
+        this.pitch = THREE.MathUtils.clamp(this.pitch + this.pitchVel * dt, MIN_PITCH, MAX_PITCH);
+        this.pitchVel *= Math.exp(-6 * dt);
+      } else this.pitchVel = 0;
     } else if (performance.now() - this.lastDrag > 60) {
       this.yawVel = 0;
+      this.pitchVel = 0;
     }
     this.target.lerp(this.goal, k(7));
     const dy = Math.atan2(Math.sin(this.yaw - this.shown.yaw), Math.cos(this.yaw - this.shown.yaw));
-    this.shown.yaw += dy * k(9);
-    this.shown.pitch += (this.pitch - this.shown.pitch) * k(9);
+    this.shown.yaw += dy * k(10);
+    this.shown.pitch += (this.pitch - this.shown.pitch) * k(10);
     this.shown.dist += (this.distance - this.shown.dist) * k(6);
 
     // 벽·천장 + 가구까지 남은 거리
@@ -166,42 +187,54 @@ export class FollowCamera {
     let wallFree = Infinity;
     const room = (pitch: number, out: THREE.Vector3) => {
       out.set(Math.sin(this.shown.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.shown.yaw) * Math.cos(pitch));
-      wallFree = roomExit(this.target, out, slack) - 0.22;
-      return Math.min(wallFree, furnitureExit(this.target, out, this.shown.dist) - 0.42);
+      wallFree = roomExit(this.target, out, slack) - 0.18;
+      return Math.min(wallFree, furnitureExit(this.target, out, this.shown.dist) - 0.32);
     };
     const dir = new THREE.Vector3();
     const want = this.shown.dist;
     // 뒤가 막혀 있으면 방향을 휙 바꾸지 않고, 그 자리에서 위로 올라가 내려다본다
     const free0 = room(this.shown.pitch, dir);
-    const liftGoal = this.focusPose ? 0 : THREE.MathUtils.clamp((Math.min(want, 1.75) - free0) / 1.1, 0, 1);
-    this.lift += (liftGoal - this.lift) * k(liftGoal > this.lift ? 6 : 2.5);
+    const liftGoal = this.focusPose ? 0 : THREE.MathUtils.clamp((Math.min(want, 1.55) - free0) / 1.25, 0, 1);
+    this.lift += (liftGoal - this.lift) * k(liftGoal > this.lift ? 5 : 2.2);
     const pitch = THREE.MathUtils.lerp(this.shown.pitch, Math.max(this.shown.pitch, LIFT_PITCH), this.lift);
     const free = room(pitch, dir);
-    const hitD = Math.min(want, Math.max(0.65, free));
+    const hitD = Math.min(want, Math.max(0.7, free));
     // 막힐 땐 빠르게 당기고, 트일 땐 천천히 물러난다(카메라가 툭툭 튀지 않게)
     if (!Number.isFinite(this.colDist)) this.colDist = hitD;
-    this.colDist += (hitD - this.colDist) * k(hitD < this.colDist ? 12 : 3);
+    this.colDist += (hitD - this.colDist) * k(hitD < this.colDist ? 11 : 3.2);
     // 벽 밖으로는 절대 나가지 않게 즉시 막고, 가구 가림은 위 감쇠로만 따라간다(가장자리를 지날 때 튀지 않게)
-    const d = Math.min(this.colDist, Math.max(0.65, wallFree));
+    const d = Math.min(this.colDist, Math.max(0.7, wallFree));
     const orbitPos = this.target.clone().addScaledVector(dir, d);
     // 방 안에 남도록 한 번 더 클램프
-    clampInsideRoom(orbitPos, 0.2);
+    clampInsideRoom(orbitPos, 0.18);
 
     const zoomT = THREE.MathUtils.clamp((this.shown.dist - MIN_DIST) / Math.max(0.01, maxD - MIN_DIST), 0, 1);
-    const nearFov = this.cam.aspect < 0.8 ? 80 : 58;
+    const nearFov = this.cam.aspect < 0.8 ? 82 : 62;
     // 줌 아웃해도 과하게 넓어지지 않게(공간 왜곡·허공 노출 완화)
-    this.cam.fov = nearFov + zoomT * 6;
+    this.cam.fov = nearFov + zoomT * 8;
     this.cam.updateProjectionMatrix();
+    // 피치에 따라 시선을 위·아래로, 수평에 가까우면 아바타 앞으로 밀어 머리가 덜 가리게
+    const lookBias = THREE.MathUtils.mapLinear(this.shown.pitch, MIN_PITCH, MAX_PITCH, 0.38, -0.16);
+    const lookFwd = THREE.MathUtils.clamp(
+      THREE.MathUtils.mapLinear(this.shown.pitch, MIN_PITCH, 28 * DEG, 0.7, 0),
+      0,
+      0.7,
+    );
+    this.lookAtScratch.set(
+      this.target.x - dir.x * lookFwd,
+      this.target.y + lookBias,
+      this.target.z - dir.z * lookFwd,
+    );
     // 읽기 모드 구도와 섞기(약 0.8초)
     if (this.focusPose) this.lastFocus = this.focusPose;
     this.focusBlend += ((this.focusPose ? 1 : 0) - this.focusBlend) * k(5.5);
     if (this.lastFocus && this.focusBlend > 0.001) {
       const e = this.focusBlend * this.focusBlend * (3 - 2 * this.focusBlend);
       this.cam.position.lerpVectors(orbitPos, this.lastFocus.pos, e);
-      this.cam.lookAt(new THREE.Vector3().lerpVectors(this.target, this.lastFocus.look, e));
+      this.cam.lookAt(new THREE.Vector3().lerpVectors(this.lookAtScratch, this.lastFocus.look, e));
     } else {
       this.cam.position.copy(orbitPos);
-      this.cam.lookAt(this.target);
+      this.cam.lookAt(this.lookAtScratch);
     }
   }
 
@@ -219,7 +252,7 @@ function roomExit(p: THREE.Vector3, dir: THREE.Vector3, slack = 0): number {
     else if (d < -1e-6) t = Math.min(t, (lo - pos) / d);
   };
   axis(p.x, dir.x, ROOM.x0 - slack, ROOM.x1 + slack);
-  axis(p.y, dir.y, 0.08, ROOM.h - 0.18 + slack * 0.4);
+  axis(p.y, dir.y, 0.12, ROOM.h - 0.12 + slack * 0.5);
   axis(p.z, dir.z, ROOM.z0 - slack, ROOM.z1 + slack);
   return t;
 }
@@ -287,6 +320,6 @@ function rayAabb(
 /** 카메라 위치를 방 안(약간 안쪽)으로 밀어 넣는다. */
 function clampInsideRoom(p: THREE.Vector3, pad: number): void {
   p.x = THREE.MathUtils.clamp(p.x, ROOM.x0 + pad, ROOM.x1 - pad);
-  p.y = THREE.MathUtils.clamp(p.y, 0.35, ROOM.h - 0.25);
+  p.y = THREE.MathUtils.clamp(p.y, 0.28, ROOM.h - 0.18);
   p.z = THREE.MathUtils.clamp(p.z, ROOM.z0 + pad, ROOM.z1 - pad);
 }

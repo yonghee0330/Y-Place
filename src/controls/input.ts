@@ -1,5 +1,5 @@
 // 캔버스 포인터 입력: 클릭과 드래그 구분(6px 미만만 클릭), 드래그 = 카메라 회전, 휠·핀치 = 줌.
-// 키보드: WASD·방향키(설정에서 켰을 때 이동), Q·E 시점 회전(항상).
+// 키보드: WASD·방향키(설정에서 켰을 때 이동), Q·E 좌우·R·F 상하 시점(항상).
 
 export interface InputHandlers {
   click(x: number, y: number): void;
@@ -87,9 +87,14 @@ export class CanvasInput {
     this.keys.delete(e.key.toLowerCase());
   };
 
-  /** Q·E → 시점 회전 방향(Q 왼쪽 +1, E 오른쪽 -1) */
+  /** Q·E → 시점 좌우 회전(Q 왼쪽 +1, E 오른쪽 -1) */
   spinAxis(): number {
     return (this.keys.has('q') ? 1 : 0) - (this.keys.has('e') ? 1 : 0);
+  }
+
+  /** R·F → 시점 상하(R 위에서 내려다봄 +1, F 수평·올려다봄 -1) */
+  tiltAxis(): number {
+    return (this.keys.has('r') ? 1 : 0) - (this.keys.has('f') ? 1 : 0);
   }
 
   /** WASD·방향키 → (x: 오른쪽+, y: 앞+) */

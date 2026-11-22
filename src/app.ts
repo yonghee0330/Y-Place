@@ -1071,7 +1071,10 @@ export async function startApp(
     } else {
       movement.keyInput.set(0, 0);
     }
-    if (!fixedCam && !anySheetOpen() && !focus.active && !follow.focused) follow.spin(input.spinAxis(), dt);
+    if (!fixedCam && !anySheetOpen() && !focus.active && !follow.focused) {
+      follow.spin(input.spinAxis(), dt);
+      follow.tilt(input.tiltAxis(), dt);
+    }
     movement.cameraYaw = follow.viewYaw;
     movement.update(dt);
     {
@@ -1139,6 +1142,13 @@ export async function startApp(
     switchingSpace: () => switchingSpace,
     portals: () => PORTALS.map(p=>({...p})),
     camera: () => ({position:camera.position.toArray(),fov:camera.fov}),
+    orbit: () => ({ yaw: follow.yaw, pitch: follow.pitch, distance: follow.distance, viewYaw: follow.viewYaw }),
+    setOrbit: (o: { yaw?: number; pitch?: number; distance?: number }) => {
+      if (o.yaw != null) follow.yaw = o.yaw;
+      if (o.pitch != null) follow.pitch = o.pitch;
+      if (o.distance != null) follow.distance = o.distance;
+      follow.follow(me.root.position, true);
+    },
     weather: () => weather,
     /** 장면이 쓰는 텍스처 중 가장 큰 변의 길이(성능 예산: 1024px 이하) */
     maxTextureSize: () => {
