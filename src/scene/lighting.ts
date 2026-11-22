@@ -121,6 +121,8 @@ export function buildLighting(
   /** 활성 공간의 램프 앵커에 PointLight·Spot을 맞춘다. */
   const syncSpaceLamps = (space: SpaceId) => {
     const anchors = lampsBySpace[space] ?? [];
+    const bookstore = space === 'bookshop' || space === 'library';
+    const boost = bookstore ? 1.3 : 1;
     while (points.length < anchors.length) {
       const p = new THREE.SpotLight(WARM, 1.5, 0, 1.25, 0.85, 2);
       points.push(p);
@@ -138,7 +140,7 @@ export function buildLighting(
       p.position.copy(a.position);
       p.target.position.set(a.position.x, 0, a.position.z);
       p.target.updateMatrixWorld();
-      p.intensity = a.kind === 'floor' ? 1.4 : 1.6;
+      p.intensity = (a.kind === 'floor' ? 1.4 : 1.6) * boost;
       p.distance = 0;
       p.decay = 2;
     }
@@ -149,7 +151,7 @@ export function buildLighting(
       if (pend.kind === 'pendant') spot.position.x += 0.35;
       spot.target.position.set(pend.position.x, 0, pend.position.z);
       spot.target.updateMatrixWorld();
-      spot.intensity = 8;
+      spot.intensity = bookstore ? 10.5 : 8;
     } else {
       spot.visible = false;
       spot.intensity = 0;
@@ -186,15 +188,17 @@ export function buildLighting(
 
   const applyMood = () => {
     syncSpaceLamps(mood);
-    const circle = mood !== 'shop'; // 창 없는 안쪽 방(모임방·작업실)
-    roomFill.intensity = circle ? 2.8 : 1.8;
-    key.intensity = circle ? 0.35 : (lastQ.shadows ? 1.1 : 0.65);
-    hemi.intensity = circle ? 0.85 : 0.8;
-    hemi.color.setHex(0xffefd9);
+    const interior = mood !== 'shop'; // 창 없는 안쪽 방
+    const bookstore = mood === 'bookshop' || mood === 'library';
+    roomFill.intensity = bookstore ? 3.5 : interior ? 2.8 : 1.8;
+    roomFill.color.setHex(bookstore ? 0xffd4a0 : 0xffe0b8);
+    key.intensity = interior ? 0.35 : (lastQ.shadows ? 1.1 : 0.65);
+    hemi.intensity = bookstore ? 0.95 : interior ? 0.85 : 0.8;
+    hemi.color.setHex(bookstore ? 0xfff0dc : 0xffefd9);
     hemi.groundColor.setHex(0x685445);
     scene.environmentIntensity = 0.25;
-    patchMat.opacity = circle ? 0 : 0.1;
-    for (const p of patches) p.visible = !circle;
+    patchMat.opacity = interior ? 0 : 0.1;
+    for (const p of patches) p.visible = !interior;
     // 실제 시각(한국 시간): 아침은 차갑게, 해질녘은 주황빛, 밤은 창빛이 꺼지고 실내 조명이 주인공
     const d = DAY_LOOK[dayPhase];
     if (dayPhase !== 'day') {
@@ -203,12 +207,12 @@ export function buildLighting(
       patchMat.color.setHex(d.key);
     }
     key.intensity *= d.keyK;
-    hemi.intensity *= circle ? 1 - (1 - d.hemiK) * 0.5 : d.hemiK;
+    hemi.intensity *= interior ? 1 - (1 - d.hemiK) * 0.5 : d.hemiK;
     scene.environmentIntensity *= d.hemiK;
     patchMat.opacity *= d.keyK;
     roomFill.intensity *= d.fillK;
     // 창 없는 안쪽 방도 밤에는 방 전체 빛을 줄여 스탠드·펜던트가 주인공이 되게
-    if (circle && dayPhase === 'night') {
+    if (interior && dayPhase === 'night') {
       roomFill.intensity *= 0.55;
       hemi.intensity *= 0.7;
     }

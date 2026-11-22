@@ -35,18 +35,35 @@ export function buildIslands(bucket: MergeBucket, rng: Rng, books: BookCollector
       bucket.add('iron',taperLeg(h-.035,.025,.021),at(trs(sx*(w/2-.035),0,sz*(d/2-.035))));
     }
     for(const sz of [-1,1]) bucket.add('iron',bevelBox(w-.04,.035,.025,.003),at(trs(0,h-.055,sz*(d/2-.035))));
+    // 아래 선반 책더미 + 앞·뒤 가장자리 표지 진열
     for(let i=0;i<5;i++) {
       stackBooks(at(trs(-w/2+.12+i*.27,.155,0,0,r.range(-.1,.1))),r,books,r.int(3,5));
-      displayBook(at(trs(-w/2+.15+i*.29,h,-.14,0,r.range(-.12,.12))),r,books,bucket);
+      displayBook(at(trs(-w/2+.15+i*.26,h,-d/2+.16,0,r.range(-.1,.1))),r,books,bucket);
+      displayBook(at(trs(-w/2+.18+i*.26,h,d/2-.16,0,Math.PI+r.range(-.1,.1))),r,books,bucket);
     }
     const top = h;
-    stackBooks(at(trs(-w * 0.25, top, 0.1, 0, 0.1)), r, books, kind === 'flat' ? 5 : 3);
-    stackBooks(at(trs(w * 0.2, top, -0.1, 0, -0.1)), r, books, kind === 'flat' ? 4 : 2);
+    // 북엔드로 책더미 경계
+    for (const sx of [-1, 1]) {
+      woodPart(bucket, r, 'walnut', bevelBox(0.022, 0.18, 0.11, 0.003), 'y', at(trs(sx * (w * 0.38), top + 0.09, 0.02)));
+    }
+    stackBooks(at(trs(-w * 0.22, top, 0.08, 0, 0.08)), r, books, kind === 'flat' ? 6 : 4);
+    stackBooks(at(trs(w * 0.18, top, -0.06, 0, -0.12)), r, books, kind === 'flat' ? 5 : 3);
     if (kind === 'flat') {
-      displayBook(at(trs(-w * 0.3, top, -0.2, 0, 0.2)), r, books, bucket);
-      displayBook(at(trs(w * 0.25, top, 0.18, 0, -0.2)), r, books, bucket);
+      displayBook(at(trs(-w * 0.28, top, -0.18, 0, 0.15)), r, books, bucket);
+      displayBook(at(trs(w * 0.22, top, 0.16, 0, -0.18)), r, books, bucket);
+      displayBook(at(trs(0.05, top, -0.02, 0, 0.05)), r, books, bucket);
+      // 스탬프·잉크패드
+      bucket.add('walnut', new THREE.CylinderGeometry(0.045, 0.045, 0.012, 20), at(trs(w * 0.35, top + 0.006, 0.18)), 0x3a2a1c);
+      bucket.add('brass', new THREE.CylinderGeometry(0.028, 0.032, 0.07, 14), at(trs(w * 0.35, top + 0.05, 0.18)));
+      // 추천 쪽지
+      const card = new THREE.PlaneGeometry(0.11, 0.07);
+      bucket.add('paper', card, at(trs(-0.05, top + 0.002, -d / 2 + 0.1, -Math.PI / 2 + 0.2)), 0xf4e4c4);
     } else {
-      displayBook(at(trs(0, top, 0.05, 0, 0.1)), r, books, bucket);
+      displayBook(at(trs(-0.15, top, 0.08, 0, 0.12)), r, books, bucket);
+      displayBook(at(trs(0.2, top, -0.05, 0, -0.15)), r, books, bucket);
+      // 작은 화분
+      bucket.add('ceramic', new THREE.CylinderGeometry(0.04, 0.05, 0.07, 16), at(trs(-w * 0.35, top + 0.035, -0.15)), 0xd8cfc0);
+      bucket.add('leaf', new THREE.SphereGeometry(0.055, 10, 8), at(trs(-w * 0.35, top + 0.1, -0.15)), 0x4a6a42);
     }
   });
 }
@@ -222,21 +239,26 @@ export function buildCounter(bucket: MergeBucket, rng: Rng, books: BookCollector
   // 상판(꿀색, 앞으로 살짝 나옴)
   woodPart(bucket, r, 'honey', bevelBox(w + 0.06, 0.04, d + 0.06, 0.012, 3), 'x', at(trs(0, h - 0.02, 0.02)));
 
-  // 소품: 작은 화분은 plants.ts에서, 여기서는 종이봉투·영수증 꽂이·책 더미
+  // 소품: 작은 화분은 plants.ts에서, 여기서는 종이봉투·영수증·스탬프·장부
   const top = h;
-  // 종이봉투: 위쪽을 접어 구겨진 느낌
-  const bag = new THREE.BoxGeometry(0.2, 0.26, 0.11, 6, 8, 3);
-  const bp = bag.getAttribute('position');
-  for (let i = 0; i < bp.count; i++) {
-    const y = bp.getY(i);
-    if (y > 0.08) {
-      const k = (y - 0.08) / 0.05;
-      bp.setX(i, bp.getX(i) + Math.sin(bp.getZ(i) * 60 + y * 40) * 0.006 * k);
-      bp.setZ(i, bp.getZ(i) * (1 - 0.3 * k));
+  const crumpleBag = (g: THREE.BoxGeometry) => {
+    const bp = g.getAttribute('position');
+    for (let i = 0; i < bp.count; i++) {
+      const y = bp.getY(i);
+      if (y > 0.08) {
+        const k = (y - 0.08) / 0.05;
+        bp.setX(i, bp.getX(i) + Math.sin(bp.getZ(i) * 60 + y * 40) * 0.006 * k);
+        bp.setZ(i, bp.getZ(i) * (1 - 0.3 * k));
+      }
     }
-  }
-  bag.computeVertexNormals();
+    g.computeVertexNormals();
+  };
+  const bag = new THREE.BoxGeometry(0.2, 0.26, 0.11, 6, 8, 3);
+  crumpleBag(bag);
   bucket.add('kraft', bag, at(trs(0.5, top + 0.13, -0.05, 0, 0.25)));
+  const bag2 = new THREE.BoxGeometry(0.16, 0.2, 0.09, 5, 6, 3);
+  crumpleBag(bag2);
+  bucket.add('kraft', bag2, at(trs(0.32, top + 0.1, 0.12, 0, -0.4)));
   // 영수증 꽂이
   bucket.add('iron', new THREE.CylinderGeometry(0.035, 0.04, 0.012, 16), at(trs(-0.15, top + 0.006, -0.08)));
   bucket.add('iron', new THREE.CylinderGeometry(0.002, 0.002, 0.14, 6), at(trs(-0.15, top + 0.08, -0.08)));
@@ -245,9 +267,15 @@ export function buildCounter(bucket: MergeBucket, rng: Rng, books: BookCollector
     slip.rotateX(-Math.PI / 2 + r.range(-0.2, 0.2));
     bucket.add('paper', slip, at(trs(-0.15 + r.range(-0.01, 0.01), top + 0.04 + i * 0.02, -0.08, 0, r.range(0, Math.PI))));
   }
-  stackBooks(at(trs(-0.55, top, 0.0, 0, 0.2)), r, books, 4);
-  // 카드 단말기 대신 작은 장부
-  bucket.add('walnut', bevelBox(0.2, 0.02, 0.28, 0.004), at(trs(0.15, top + 0.01, 0.05, 0, -0.1)), 0x3f5f4a);
+  stackBooks(at(trs(-0.55, top, 0.0, 0, 0.2)), r, books, 5);
+  // 카드 단말기 대신 작은 장부 + 펜
+  bucket.add('walnut', bevelBox(0.2, 0.02, 0.28, 0.004), at(trs(0.12, top + 0.01, 0.05, 0, -0.1)), 0x3f5f4a);
+  bucket.add('brass', new THREE.CylinderGeometry(0.004, 0.004, 0.13, 6), at(trs(0.22, top + 0.012, 0.12, 0, 0.3, Math.PI / 2)));
+  // 도장·잉크패드
+  bucket.add('walnut', new THREE.CylinderGeometry(0.04, 0.04, 0.01, 18), at(trs(-0.42, top + 0.005, 0.12)), 0x2c2218);
+  bucket.add('brass', new THREE.CylinderGeometry(0.026, 0.03, 0.065, 12), at(trs(-0.42, top + 0.045, 0.12)));
+  // 메모 카드 한 장
+  bucket.add('paper', new THREE.PlaneGeometry(0.1, 0.07), at(trs(-0.28, top + 0.003, 0.05, -Math.PI / 2 + 0.15)), 0xf6e9d0);
 }
 
 /** 창가 벤치: 판재 좌석 + 테이퍼 다리 + 앞 가로대 + 방석 2개 + 쿠션에 기댄 책. */
@@ -330,5 +358,7 @@ export function buildSideTable(bucket: MergeBucket, rng: Rng, books: BookCollect
     const a=i*Math.PI*2/3;
     woodPart(bucket,random,'walnut',taperLeg(h-.026,.025,.018),'y',at(trs(Math.sin(a)*r*.7,0,Math.cos(a)*r*.7)));
   }
-  stackBooks(at(trs(-.09,h,0,0,.2)),random,books,1);
+  stackBooks(at(trs(-.09,h,0,0,.2)),random,books,2);
+  const mug = new THREE.CylinderGeometry(0.032, 0.03, 0.07, 16);
+  bucket.add('ceramic', mug, at(trs(0.06, h + 0.035, 0.02)), 0xe2d6c4);
 }

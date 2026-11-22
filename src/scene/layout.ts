@@ -58,7 +58,7 @@ export interface SpaceLayout {
   label: string;
   room: RoomBounds;
   openings: Opening[];
-  shelves: (Placement & { w: number; wing: 'A' | 'B' | 'C' | 'mid'; rail?: boolean })[];
+  shelves: (Placement & { w: number; wing: 'A' | 'B' | 'C' | 'mid'; rail?: boolean; faceOut?: boolean })[];
   islands: (Placement & { w: number; d: number; h: number; kind: 'flat' | 'stand' })[];
   partitions: PartitionWall[];
   readingTable: (Placement & { w: number; d: number; h: number }) | null;
@@ -164,8 +164,11 @@ function makeBookshop(): SpaceLayout {
   return { ...emptyBase('bookshop', '책방 실험실', roomOf(7, 5.5, 2.9)),
     openings: [],
     shelves: [
-      { x: -2.1, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' }, { x: 0, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' }, { x: 2.1, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' },
+      { x: -2.1, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' },
+      { x: 0, z: B + 0.21, ry: 0, w: 1.65, wing: 'A', faceOut: true },
+      { x: 2.1, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' },
       { x: L + 0.21, z: -0.85, ry: Math.PI / 2, w: 1.65, wing: 'B' },
+      { x: L + 0.21, z: 0.85, ry: Math.PI / 2, w: 1.2, wing: 'B', faceOut: true },
       { x: R - 0.21, z: -0.85, ry: -Math.PI / 2, w: 1.65, wing: 'C' },
     ],
     islands: [
@@ -177,8 +180,8 @@ function makeBookshop(): SpaceLayout {
     armchairs: [arm],
     sideTable: { x: -3.05, z: 1.05, ry: 0, r: .18, h: .5 },
     rug: { x: 0, z: -0.35, w: 3.6, d: 1.9 },
-    floorLamps: [{ x: -3.1, z: 2.35, ry: 0 }],
-    floorPlants: [{ x: 3.05, z: 2.35, scale: .75 }],
+    floorLamps: [{ x: -3.1, z: 2.35, ry: 0 }, { x: 2.85, z: 0.55, ry: 0 }],
+    floorPlants: [{ x: 3.05, z: 2.35, scale: .75 }, { x: -3.1, z: -0.2, scale: .62 }],
     pendants: [{ x: -1.05, z: -0.35, drop: .75 }, { x: 1.05, z: -0.35, drop: .75 }, { x: 2.6, z: 1.55, drop: .6 }],
     seats: [{ id: 'arm-1', ...arm, y: 0.44, approach: 1 }],
     spawn, spawns: [spawn, { x: -0.6, z: 1.7, ry: Math.PI }],

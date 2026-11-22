@@ -66,7 +66,7 @@ export function buildShelves(bucket: MergeBucket, rng: Rng): Compartment[] {
         width: innerW,
         height,
         depth: d - 0.02,
-        display: s.rail && i % 2 === 1,
+        display: (s.rail || s.faceOut) && i % 2 === 1,
       });
     }
   });
