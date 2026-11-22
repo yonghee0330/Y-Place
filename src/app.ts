@@ -792,13 +792,15 @@ export async function startApp(
     if (switchingSpace || to === currentSpaceId() || focus.active) return;
     switchingSpace = true;
     const from = currentSpaceId();
-    const prevPos = { x: me.root.position.x, z: me.root.position.z, ry: me.root.rotation.y };
     try {
-      if (movement.reading) {
-        movement.setReading(false);
-        me.setReadingBook(null);
+      // 걸어서 넘어갈 때는 걸음을 끊지 않는다(멈춤·제자리 재배치 없음)
+      if (!keepPlace) {
+        if (movement.reading) {
+          movement.setReading(false);
+          me.setReadingBook(null);
+        }
+        movement.stop();
       }
-      movement.stop();
       if (!isWorkSpace(to)) {
         workPanel.setRoom(null);
         deskFx.place(null);
@@ -806,9 +808,7 @@ export async function startApp(
       store.setActiveSpace(to);
       applyLayout(to);
       store.floor = store.spaces.shop.floor;
-      if (keepPlace) {
-        movement.place(prevPos.x, prevPos.z, prevPos.ry);
-      } else {
+      if (!keepPlace) {
         const spawn = zoneSpawn(to);
         movement.place(spawn.x, spawn.z, spawn.ry);
         follow.yaw = spawn.ry + Math.PI;
@@ -864,11 +864,27 @@ export async function startApp(
     }
   }
 
-  /** 걸어서 구역을 넘을 때 presence·HUD를 맞춘다. */
-  function syncZoneFromPosition(): void {
+  /**
+   * 걸어서 구역을 넘을 때 presence·HUD를 맞춘다.
+   * 문틀 위에서 왔다 갔다 해도 접속을 계속 다시 잡지 않게, 새 구역에 0.35초 머물러야 바꾼다.
+   */
+  let zoneCandidate: SpaceId | null = null;
+  let zoneHold = 0;
+  function syncZoneFromPosition(dt: number): void {
     if (switchingSpace || focus.active) return;
     const next = detectZone(me.root.position.x, me.root.position.z);
-    if (next === currentSpaceId()) return;
+    if (next === currentSpaceId()) {
+      zoneCandidate = null;
+      return;
+    }
+    if (next !== zoneCandidate) {
+      zoneCandidate = next;
+      zoneHold = 0;
+      return;
+    }
+    zoneHold += dt;
+    if (zoneHold < 0.35) return;
+    zoneCandidate = null;
     void enterSpace(next, undefined, true);
   }
 
@@ -1083,7 +1099,8 @@ export async function startApp(
     }
     movement.cameraYaw = follow.viewYaw;
     movement.update(dt);
-    syncZoneFromPosition();
+    store.lighting.update(me.root.position, dt);
+    syncZoneFromPosition(dt);
     {
       nearTalk = updateTalkNpcs(talkNpcs, me.root.position, dt, npcChat.talkingTo);
       if (pendingTalk && nearTalk === pendingTalk && !movement.moving) openTalk(pendingTalk);
