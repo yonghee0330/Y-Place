@@ -2,7 +2,7 @@
 // 시선·줌은 현재 방(ROOM) 안으로 묶고, 서가·가구에 가리면 거리를 줄여 등 뒤 장면이 시야를 막지 않게 한다.
 import * as THREE from 'three';
 import type { CamPreset } from '../core/params';
-import { PARTITIONS, ROOM, colliders } from '../scene/layout';
+import { ROOM, colliders } from '../scene/layout';
 
 export const CAM_PRESETS: Record<CamPreset, { pos: [number, number, number]; target: [number, number, number]; fov: number }> = {
   // 입구 쪽에서 허브 중앙을 내려다봄
@@ -187,10 +187,8 @@ export class FollowCamera {
     let wallFree = Infinity;
     const room = (pitch: number, out: THREE.Vector3) => {
       out.set(Math.sin(this.shown.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.shown.yaw) * Math.cos(pitch));
-      // 칸막이 벽(문틀 위 상인방 포함)도 방 벽처럼 단단한 벽으로 본다
-      const part = partitionExit(this.target, out);
-      wallFree = Math.min(roomExit(this.target, out, slack), part.wall) - 0.18;
-      return Math.min(wallFree, part.door - 0.25, furnitureExit(this.target, out, this.shown.dist) - 0.32);
+      wallFree = roomExit(this.target, out, slack) - 0.18;
+      return Math.min(wallFree, furnitureExit(this.target, out, this.shown.dist) - 0.32);
     };
     const dir = new THREE.Vector3();
     const want = this.shown.dist;
@@ -291,49 +289,6 @@ function furnitureExit(p: THREE.Vector3, dir: THREE.Vector3, maxDist: number): n
     }
   }
   return best;
-}
-
-/**
- * 아바타→카메라 선이 칸막이 벽에 닿는 거리. 문 구멍은 비우고, 문 위 상인방은 벽으로 친다.
- * 아바타가 문틀 안에 서 있을 때는 그 칸막이를 건너뛴다(카메라가 코앞으로 붙지 않게).
- */
-function partitionExit(p: THREE.Vector3, dir: THREE.Vector3): { wall: number; door: number } {
-  let best = Infinity;
-  let door = Infinity;
-  const thick = 0.12 / 2 + 0.04;
-  for (const w of PARTITIONS) {
-    const cos = Math.cos(w.ry), sin = Math.sin(w.ry);
-    // 벽 좌표계(u: 벽을 따라, v: 벽 두께 방향)로 아바타 위치
-    const rx = p.x - w.x, rz = p.z - w.z;
-    const u = rx * cos + rz * sin;
-    const v = -rx * sin + rz * cos;
-    const box = (a: number, b: number, y0: number, y1: number, gap = false) => {
-      if (b - a < 0.02) return;
-      const mid = (a + b) / 2, len = b - a;
-      const cx = w.x + mid * cos, cz = w.z + mid * sin;
-      const c = Math.abs(cos), s = Math.abs(sin);
-      const hw = (len * c + thick * 2 * s) / 2, hd = (len * s + thick * 2 * c) / 2;
-      const t = rayAabb(p.x, p.y, p.z, dir.x, dir.y, dir.z, cx - hw, cx + hw, y0, y1, cz - hd, cz + hd);
-      if (t === null || t <= 0.05) return;
-      if (gap) door = Math.min(door, t);
-      else best = Math.min(best, t);
-    };
-    const half = w.len / 2;
-    if (!w.door) {
-      box(-half, half, 0, w.h);
-      continue;
-    }
-    const d0 = w.door.cx - w.door.w / 2, d1 = w.door.cx + w.door.w / 2;
-    if (Math.abs(v) < thick + 0.05 && u > d0 && u < d1) continue;
-    box(-half, d0, 0, w.h);
-    box(d1, half, 0, w.h);
-    if (w.h > w.door.h) box(d0, d1, w.door.h, w.h);
-    // 문 앞(1.3m 안)이 아니면 문 구멍 너머로 카메라를 빼지 않는다: 카메라는 아바타와 같은 구역에 둔다.
-    // 단단한 벽과 달리 부드럽게 당겨, 문을 지나 걸어 들어갈 때 화면이 툭 튀지 않게 한다.
-    const du = u < d0 ? d0 - u : u > d1 ? u - d1 : 0;
-    if (Math.hypot(du, v) > 1.3) box(d0, d1, 0, w.door.h, true);
-  }
-  return { wall: best, door };
 }
 
 /** 레이 ↔ AABB. 히트 거리 또는 null. */

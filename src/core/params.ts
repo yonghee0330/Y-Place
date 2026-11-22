@@ -17,7 +17,7 @@ export interface Params {
   autostart: boolean;
   /** 캡처·테스트용: 이 자리에 앉은 채로 시작(예: sofa-2) */
   seat: string | null;
-  /** 입장 상한. 기본 2(구역 정원), `?cap=`은 테스트용으로 1~20만 허용 */
+  /** 입장 상한. 기본 20, `?cap=`은 테스트용으로 1~20만 허용 */
   cap: number;
   /** 카카오 표지 프록시 등 HTTP API origin. 없으면 ws 주소에서 추론하거나 같은 출처 */
   api: string;
@@ -34,10 +34,10 @@ export const DEFAULT_SEED = 86;
 /** 입장 장소는 한 곳. 번호로 방을 나누지 않는다. */
 export const ROOM_NAME = 'Y-Place';
 
-/** 구역 기본 정원. NPC는 세지 않는다. */
-export const ROOM_CAPACITY = 2;
-/** 정원 상한(?cap= 테스트용). presence·ws 클램프에 쓴다. */
-export const MAX_SPACE_CAPACITY = 20;
+/** 실험실 로비 기본 정원. NPC는 세지 않는다. */
+export const ROOM_CAPACITY = 12;
+/** 공간별 정원 상한(강연장 등). presence·ws 클램프에 쓴다. */
+export const MAX_SPACE_CAPACITY = 12;
 
 export function readParams(search = location.search): Params {
   const q = new URLSearchParams(search);

@@ -6,7 +6,7 @@
   - `context`(선택): 지금 방·접속자 수·날씨·시간대·내 닉네임·앉은 자리·읽는 책 제목·책 펼친 사람 목록. 닉네임·공개 제목만. 형식이 틀려도 대화는 되고 맥락만 무시한다.
 - 막는 것: 허용 주소(`ALLOWED_ORIGINS`) 밖의 요청, 한 번에 12턴·한 마디 300자·합계 3000자 초과, 같은 IP 10분 20회 초과(인스턴스별 대략치)
 - 모델: `NPC_MODEL`(기본 `claude-haiku-5-5`), 생각 노력 `NPC_EFFORT`(기본 `high`). 2026-11-17 운영자 결정으로 Opus 5.5 → Haiku 5.5. Haiku에는 서버 측 대체 모델이 없어, 다른 모델로 바꿀 때만 `fallbacks: "default"`를 켭니다.
-- NPC 성격·공간 지식: `src/personas.ts` (클라이언트는 NPC id만 보냄). NPC 6명: `barista`·`researcher`(로비), `bookseller`(책방 실험실), `curator`(서재), `host`(작은 모임방, 모임 기획자), `docent`(전시실). 새 NPC는 이 파일과 `src/avatar/talkNpc.ts`·`src/net/npcChat.ts`·`src/ui/npcChatSheet.ts`에 함께 추가한다.
+- NPC 성격·공간 지식: `src/personas.ts` (클라이언트는 NPC id만 보냄). NPC 6명: `barista`·`researcher`(로비), `bookseller`·`curator`(책방 실험실), `host`(모임 실험실), `docent`(전시 실험실).
 
 ## 처음 설정(운영자가 직접)
 

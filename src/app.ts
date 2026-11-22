@@ -41,10 +41,11 @@ import { DrinkSheet } from './ui/drinkSheet';
 import { NewReleaseSheet } from './ui/newReleaseSheet';
 import { drinkCooldownMs, drinkToast, isDrinkKind, type DrinkKind } from './net/drink';
 import {
-PORTALS, SEATS, SPAWN, SPAWNS, WORK_DESK, applyLayout, colliders, currentSpaceId, detectZone, isWorkSpace, spaceCapacity, spaceLabel, zoneSpawn,
+PORTALS, SEATS, SPAWN, SPAWNS, WORK_DESK, applyLayout, colliders, currentSpaceId, isWorkSpace, spaceCapacity, spaceLabel,
   type PortalDef, type SpaceId,
 } from './scene/layout';
 import { buildPostFx, type PostFx } from './scene/postfx';
+import { NavGrid } from './controls/pathfinding';
 import { Hud, icon } from './ui/hud';
 import type { LoadingScreen } from './ui/loading';
 import { SettingsSheet } from './ui/settings';
@@ -697,15 +698,39 @@ export async function startApp(
 
   function portalUsable(_portal: PortalDef): boolean { return true; }
 
-  function askEnterPortal(portal: PortalDef, opts?: { fromMenu?: boolean }): void {
-    if (switchingSpace || focus.active || anySheetOpen()) return;
-    if (portal.to === currentSpaceId()) return;
-    if (!opts?.fromMenu && !portalUsable(portal)) return;
-    // 열린 문틀: 확인 없이 구역으로 워프(걸어서도 들어갈 수 있음)
-    if (portal.open) {
-      void enterSpace(portal.to, portal);
+  // ---------- 개인 작업실 문: 문 하나로 들어가 방을 고른다 ----------
+  const roomPickSheet = new Sheet('개인 작업실', 'room-pick-sheet');
+  /**
+   * 이 문으로 들어갈 방을 정한다. 지금은 주인이 정해지지 않아 고르게 하지만,
+   * 방 주인이 정해지면 여기서 자기 방 id를 돌려주면 된다(고르는 창 없이 바로 들어간다).
+   */
+  function resolveWorkRoom(_portal: PortalDef): SpaceId | null {
+    return null;
+  }
+  function askPickRoom(portal: PortalDef): void {
+    const own = resolveWorkRoom(portal);
+    if (own) {
+      void enterSpace(own, portal);
       return;
     }
+    roomPickSheet.body.innerHTML = `<p class="sheet-text">들어갈 작업실을 골라 주세요. 한 방에 한 명만 들어갈 수 있어요.</p>
+      <div class="space-list" role="list">${(portal.choose ?? []).map((id) => `<button type="button" class="space-item" role="listitem" data-room="${id}">
+        <span class="space-item-name">${spaceLabel(id)}</span><span class="space-item-meta">1인용</span></button>`).join('')}</div>`;
+    roomPickSheet.body.querySelectorAll<HTMLButtonElement>('[data-room]').forEach((b) => b.addEventListener('click', () => {
+      roomPickSheet.close();
+      void enterSpace(b.dataset.room as SpaceId, portal);
+    }));
+    roomPickSheet.open();
+  }
+
+  function askEnterPortal(portal: PortalDef, opts?: { fromMenu?: boolean }): void {
+    if (switchingSpace || focus.active || anySheetOpen()) return;
+    if (portal.choose?.length) {
+      askPickRoom(portal);
+      return;
+    }
+    if (portal.to === currentSpaceId()) return;
+    if (!opts?.fromMenu && !portalUsable(portal)) return;
     const name = spaceLabel(portal.to);
     portalPending = portal;
     portalSheet.el.querySelector('.sheet-title')!.textContent = name;
@@ -736,7 +761,7 @@ export async function startApp(
       box.userData.portal = p;
       hitGroup.add(box);
     }
-    for (const h of store.spaces.shop?.newReleaseHits ?? []) {
+    for (const h of store.spaces[currentSpaceId()]?.newReleaseHits ?? []) {
       hitGroup.add(h.mesh);
     }
     hitGroup.updateMatrixWorld(true);
@@ -757,7 +782,7 @@ export async function startApp(
       hud.setHidden(hidden);
       me.hideLabel = hidden || follow.focused;
     },
-    isSeated: () => !!movement.seat?.id.startsWith('desk'),
+    isSeated: () => movement.seat?.id === 'desk-1',
     secPerMin: params.workSec,
   });
   /** 내 자리 시점: 어깨 너머 비스듬히 위에서 책상 위(시계·노트북·스탠드)가 한눈에 보인다. */
@@ -784,74 +809,51 @@ export async function startApp(
   }
 
   let switchingSpace = false;
-  /**
-   * 구역 이동. 메시는 같고 presence 채널만 구역별로 나눈다(정원 2명).
-   * keepPlace면 발 위치 유지(걸어서 넘어감), 아니면 구역 스폰으로 워프.
-   */
-  async function enterSpace(to: SpaceId, via?: PortalDef, keepPlace = false): Promise<void> {
+  async function enterSpace(to: SpaceId, via?: PortalDef): Promise<void> {
     if (switchingSpace || to === currentSpaceId() || focus.active) return;
     switchingSpace = true;
-    const from = currentSpaceId();
+    if (movement.reading) {
+      movement.setReading(false);
+      me.setReadingBook(null);
+    }
+    movement.stop();
+    // 작업실을 나가면 진행 중인 세션을 기록하고 닫는다
+    workPanel.setRoom(null);
+    deskFx.place(null);
+    store.setActiveSpace(to);
+    applyLayout(to);
+    store.floor = store.spaces[to].floor;
+    movement.setSpace(new NavGrid(), [...SEATS]);
+    rebuildHits();
+    const spawn = SPAWN;
+    movement.place(spawn.x, spawn.z, spawn.ry);
+    follow.yaw = spawn.ry + Math.PI;
+    follow.fitToSpace(true);
+    follow.follow(me.root.position, true);
+    refreshNpcs();
+    hud.setRoomName(spaceLabel(to));
+    // 공간마다 presence 채널을 나눠 다른 방 사람과 겹치지 않게
+    presence.disconnect();
+    for (const a of crowd.list('peer')) crowd.remove(a.id);
+    peers = new Map();
+    hud.setCount(1);
     try {
-      // 걸어서 넘어갈 때는 걸음을 끊지 않는다(멈춤·제자리 재배치 없음)
-      if (!keepPlace) {
-        if (movement.reading) {
-          movement.setReading(false);
-          me.setReadingBook(null);
-        }
-        movement.stop();
-      }
-      if (!isWorkSpace(to)) {
-        workPanel.setRoom(null);
-        deskFx.place(null);
-      }
-      store.setActiveSpace(to);
-      applyLayout(to);
-      store.floor = store.spaces.shop.floor;
-      if (!keepPlace) {
-        const spawn = zoneSpawn(to);
-        movement.place(spawn.x, spawn.z, spawn.ry);
-        follow.yaw = spawn.ry + Math.PI;
-        follow.fitToSpace(true);
-        follow.follow(me.root.position, true);
-      }
-      refreshNpcs();
-      hud.setRoomName(spaceLabel(to));
-      // 구역마다 presence 채널을 나눠 정원 2명을 지킨다
-      presence.disconnect();
-      for (const a of crowd.list('peer')) crowd.remove(a.id);
-      peers = new Map();
-      hud.setCount(1);
       const admission = await connect();
       if (admission === 'full') {
         toasts.show(`${spaceLabel(to)} 자리가 다 찼어요. 잠시 뒤에 다시 와 주세요`);
-        store.setActiveSpace(from);
-        applyLayout(from);
-        hud.setRoomName(spaceLabel(from));
-        // 걸어서 들어왔어도 발 위치는 이미 새 구역이라, 이전 구역 스폰으로 되돌린다
-        const back = zoneSpawn(from);
-        movement.place(back.x, back.z, back.ry);
-        follow.yaw = back.ry + Math.PI;
-        follow.follow(me.root.position, true);
-        presence.disconnect();
-        for (const a of crowd.list('peer')) crowd.remove(a.id);
-        peers = new Map();
-        await connect();
-        syncWorkRoom();
-        pushState(true);
-        syncPeers();
+        switchingSpace = false;
+        if (to !== 'shop') await enterSpace('shop');
         return;
       }
-      if (!keepPlace) {
-        toasts.show(to === 'shop' ? `${spaceLabel(to)}로 돌아왔어요` : `${spaceLabel(to)}에 들어왔어요`);
-      }
-      if (isWorkSpace(to) && !keepPlace) {
-        const prefer = to === 'tech' ? 'desk-tech-1' : 'desk-1';
-        const chair = SEATS.find((x) => x.id === prefer) ?? SEATS.find((x) => x.id.startsWith('desk'));
+      toasts.show(to === 'shop' ? `${spaceLabel(to)}로 돌아왔어요` : `${spaceLabel(to)}에 들어왔어요`);
+      // 1인 작업실은 들어오면 바로 책상 의자로 가서 앉는다
+      if (isWorkSpace(to)) {
+        const chair = SEATS.find((x) => x.id === 'desk-1');
         if (chair) movement.goSit(chair);
       }
       syncWorkRoom();
-      if (isWorkSpace(to) && !params.autostart && !keepPlace) {
+      // 들어오면 오늘 목표·이번 할 일을 적고 시작하게 한다(캡처·테스트의 자동 입장은 건너뛴다)
+      if (isWorkSpace(to) && !params.autostart) {
         window.setTimeout(() => {
           if (currentSpaceId() === to && !anySheetOpen()) workPanel.invite();
         }, 1600);
@@ -862,30 +864,6 @@ export async function startApp(
       switchingSpace = false;
       void via;
     }
-  }
-
-  /**
-   * 걸어서 구역을 넘을 때 presence·HUD를 맞춘다.
-   * 문틀 위에서 왔다 갔다 해도 접속을 계속 다시 잡지 않게, 새 구역에 0.35초 머물러야 바꾼다.
-   */
-  let zoneCandidate: SpaceId | null = null;
-  let zoneHold = 0;
-  function syncZoneFromPosition(dt: number): void {
-    if (switchingSpace || focus.active) return;
-    const next = detectZone(me.root.position.x, me.root.position.z);
-    if (next === currentSpaceId()) {
-      zoneCandidate = null;
-      return;
-    }
-    if (next !== zoneCandidate) {
-      zoneCandidate = next;
-      zoneHold = 0;
-      return;
-    }
-    zoneHold += dt;
-    if (zoneHold < 0.35) return;
-    zoneCandidate = null;
-    void enterSpace(next, undefined, true);
   }
 
   const ray = new THREE.Raycaster();
@@ -1099,8 +1077,6 @@ export async function startApp(
     }
     movement.cameraYaw = follow.viewYaw;
     movement.update(dt);
-    store.lighting.update(me.root.position, dt);
-    syncZoneFromPosition(dt);
     {
       nearTalk = updateTalkNpcs(talkNpcs, me.root.position, dt, npcChat.talkingTo);
       if (pendingTalk && nearTalk === pendingTalk && !movement.moving) openTalk(pendingTalk);

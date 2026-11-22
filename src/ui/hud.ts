@@ -107,7 +107,7 @@ export class Hud {
     this.count.parentElement!.setAttribute('aria-label', `지금 함께 있는 사람 ${n}명, 최대 ${this.cap}명`);
   }
 
-  /** 지금 공간의 정원 표시(/2 등) */
+  /** 지금 공간의 정원 표시(/20 등) */
   setCapacity(cap: number): void {
     this.cap = cap;
     const el = this.count.parentElement!.querySelector('.count-cap');

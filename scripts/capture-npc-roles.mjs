@@ -5,7 +5,7 @@ import { chromium } from '@playwright/test';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const errors = [];
 const out = {};
-const NPCS = [['shop', 'barista'], ['shop', 'researcher'], ['bookshop', 'bookseller'], ['library', 'curator'], ['circle', 'host'], ['gallery', 'docent']];
+const NPCS = [['shop', 'barista'], ['shop', 'researcher'], ['bookshop', 'bookseller'], ['bookshop', 'curator'], ['circle', 'host'], ['gallery', 'docent']];
 const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
 p.on('pageerror', (e) => errors.push(e.message));
 p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

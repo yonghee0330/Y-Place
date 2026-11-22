@@ -1,39 +1,17 @@
-// Y-Place 메타공간 실험실: 넓은 한 캠퍼스 안을 벽·문틀로 구역만 나눈다.
-// 포털로 방을 갈아끼우지 않는다. x: 왼쪽(-)→오른쪽(+), z: 뒤(-)→앞(+). 단위 m.
 import { Rng } from '../core/rng';
+// Y-Place 메타공간 실험실: 처음 들어가는 로비에서 포털(문)로 책방·모임·전시 실험실로 이어진다.
+// 가구·이동·클릭이 공유하는 공간 데이터.
+// x: 왼쪽(-)→오른쪽(+), z: 뒤 창벽(-)→앞 입구(+). 단위 m, 바닥 y=0.
+// 빌드·전환 시 applyLayout()으로 활성 공간 상수를 맞춘다.
 
-/** 'shop'은 중앙 광장(옛 로비 id — 방문자 저장값·채널 이름을 지키려고 유지). */
-export type SpaceId =
-  | 'shop'
-  | 'bookshop'
-  | 'circle'
-  | 'gallery'
-  | 'market'
-  | 'challenge'
-  | 'cowork'
-  | 'tech';
-
-export const SPACE_ORDER: SpaceId[] = [
-  'shop', 'bookshop', 'circle', 'gallery', 'market', 'challenge', 'cowork', 'tech',
-];
-
-/** 메시는 캠퍼스 하나만 만든다. */
-export const BUILD_SPACES: SpaceId[] = ['shop'];
-
-const LABELS: Record<SpaceId, string> = {
-  shop: '실험실 광장',
-  bookshop: '책방 실험실',
-  circle: '모임 실험실',
-  gallery: '전시 실험실',
-  market: '마켓 실험실',
-  challenge: '챌린지 실험실',
-  cowork: '공동 작업실',
-  tech: '신기술 개발실',
-};
-
-/** 공동 작업·신기술 구역에서 작업 패널을 켠다. */
-export function isWorkSpace(id: SpaceId): boolean {
-  return id === 'cowork' || id === 'tech';
+/** 'shop'은 로비다(방문자 저장값·채널 이름을 지키려고 옛 id를 그대로 쓴다). */
+export type SpaceId = 'shop' | 'bookshop' | 'circle' | 'gallery';
+/**
+ * 1인 작업실은 2026-11-22에 일단 없앴다. 작업 패널·책상 연출 코드는 되살릴 때를 위해 남겨 두고,
+ * 작업실 공간이 없으므로 항상 false다.
+ */
+export function isWorkSpace(_id: SpaceId): boolean {
+  return false;
 }
 
 export interface RoomBounds {
@@ -45,6 +23,7 @@ export interface Opening { cx: number; w: number; y0: number; y1: number; kind: 
 export interface Placement { x: number; z: number; ry: number }
 export interface Seat {
   id: string; x: number; z: number; ry: number; y: number; approach: 1 | -1;
+  /** 좁은 곳의 좌석: 다가가는 지점을 직접 지정(없으면 앞/뒤 0.5m) */
   from?: { x: number; z: number };
 }
 export interface Collider {
@@ -53,24 +32,26 @@ export interface Collider {
   seats?: string[];
 }
 export interface PortalDef {
+  /** 이 문으로 연결되는 공간 */
   to: SpaceId;
   x: number; z: number; ry: number;
   label: string;
+  /** 클릭/트리거 박스 크기 */
   w: number; d: number;
+  /** true면 문짝 없이 문틀만 생성 */
   open?: boolean;
+  /** 문 위 간판 폭(문이 나란히 붙어 있을 때 겹치지 않게 줄인다) */
   signW?: number;
+  /**
+   * 문 하나로 여러 방에 들어갈 때: 누르면 이 목록에서 고른다(간판은 label을 쓴다).
+   * 나중에 방 주인이 정해지면 고르는 대신 자기 방으로 바로 보낸다(app.ts의 resolveWorkRoom).
+   */
   choose?: SpaceId[];
 }
 
 export interface PartitionWall {
   x: number; z: number; ry: number; len: number; h: number;
   door?: { cx: number; w: number; h: number };
-}
-
-export interface ZoneBounds {
-  id: SpaceId;
-  x0: number; x1: number; z0: number; z1: number;
-  spawn: { x: number; z: number; ry: number };
 }
 
 export interface SpaceLayout {
@@ -90,17 +71,23 @@ export interface SpaceLayout {
   storeChairs: Placement[];
   sofa: (Placement & { w: number; d: number }) | null;
   coffeeTable: (Placement & { w: number; d: number; h: number }) | null;
+  /** w·d는 사각형 크기. round면 지름 w(또는 min(w,d))인 원형 카페트 */
   rug: { x: number; z: number; w: number; d: number; round?: boolean } | null;
   bench: (Placement & { w: number; d: number; h: number }) | null;
+  /** 창가 바테이블(높은 테이블) */
   barTable: (Placement & { w: number; d: number; h: number }) | null;
   counter: (Placement & { w: number; d: number; h: number }) | null;
+  /** 안마 의자(앉은 사람은 +z) */
   massageChairs: Placement[];
+  /** 커피 코너 수납장 카운터(손님 쪽이 +z) */
   coffeeBar: (Placement & { w: number; d: number; h: number }) | null;
+  /** 커피 코너의 작은 원형 테이블 */
   cafeTable: { x: number; z: number; r: number; h: number } | null;
+  /** 1인 작업실 책상(앉는 쪽이 +z) */
   workDesk: (Placement & { w: number; d: number; h: number }) | null;
-  /** 공동 작업·신기술용 추가 책상(콜라이더·좌석만). workDesk는 대표 책상. */
-  extraDesks: (Placement & { w: number; d: number; h: number; seatId: string })[];
+  /** 전시실 벽 작품(앞면 +z). seed로 그림이 정해진다 */
   exhibits: (Placement & { w: number; h: number; y: number; seed: number; title: string })[];
+  /** 전시 받침대 위 조형물 */
   pedestals: { x: number; z: number; kind: 'knot' | 'stack' | 'ring' }[];
   floorLamps: Placement[];
   pendants: { x: number; z: number; drop: number }[];
@@ -114,305 +101,183 @@ export interface SpaceLayout {
 export const WAINSCOT_H = 0.17;
 export const SHELF = { h: 2.15, d: 0.32, board: 0.02, levels: 5, plinth: 0.08 } as const;
 
-function roomOf(w: number, d: number, h = 3.1): RoomBounds {
+function roomOf(w: number, d: number, h = 2.9): RoomBounds {
   return { w, d, h, x0: -w / 2, x1: w / 2, z0: -d / 2, z1: d / 2 };
 }
 
-function shift<T extends { x: number; z: number }>(p: T, ox: number, oz: number): T {
-  return { ...p, x: p.x + ox, z: p.z + oz };
-}
-
-/** 캠퍼스 외곽 24×16m. 구역은 칸막이 벽으로만 나눈다. */
-const CAMPUS = roomOf(24, 16, 3.2);
-
-/** 구역 AABB + 빠른 이동 스폰(월드 좌표). */
-export const ZONE_BOUNDS: ZoneBounds[] = [
-  { id: 'shop', x0: -3.6, x1: 3.6, z0: -1.6, z1: 4.4, spawn: { x: 0, z: 2.4, ry: Math.PI } },
-  { id: 'bookshop', x0: -12, x1: -3.7, z0: -8, z1: -1.7, spawn: { x: -8, z: -3.2, ry: Math.PI } },
-  { id: 'gallery', x0: -3.6, x1: 3.6, z0: -8, z1: -1.7, spawn: { x: -1.4, z: -3.0, ry: Math.PI } },
-  { id: 'market', x0: 3.7, x1: 12, z0: -8, z1: -1.7, spawn: { x: 8, z: -3.2, ry: Math.PI } },
-  { id: 'circle', x0: -12, x1: -3.7, z0: -1.6, z1: 4.4, spawn: { x: -9.8, z: 2.5, ry: Math.PI } },
-  { id: 'challenge', x0: 3.7, x1: 12, z0: -1.6, z1: 4.4, spawn: { x: 9.8, z: 2.5, ry: Math.PI } },
-  { id: 'cowork', x0: -12, x1: -0.2, z0: 4.5, z1: 8, spawn: { x: -6, z: 7.1, ry: Math.PI } },
-  { id: 'tech', x0: 0.2, x1: 12, z0: 4.5, z1: 8, spawn: { x: 6, z: 7.1, ry: Math.PI } },
-];
-
-export function zoneSpawn(id: SpaceId): { x: number; z: number; ry: number } {
-  return ZONE_BOUNDS.find((z) => z.id === id)?.spawn ?? ZONE_BOUNDS[0].spawn;
-}
-
-/** 발 위치로 구역을 고른다. 경계 밖이면 광장. */
-export function detectZone(x: number, z: number): SpaceId {
-  for (const zoned of ZONE_BOUNDS) {
-    if (zoned.id === 'shop') continue;
-    if (x >= zoned.x0 && x <= zoned.x1 && z >= zoned.z0 && z <= zoned.z1) return zoned.id;
-  }
-  return 'shop';
-}
-
-function wall(x: number, z: number, ry: number, len: number, doorCx = 0): PartitionWall {
-  return { x, z, ry, len, h: 2.75, door: { cx: doorCx, w: 1.35, h: 2.15 } };
-}
-
-function makeCampus(): SpaceLayout {
-  // --- 구역 원점(로컬 가구 → 월드) ---
-  const BS = { x: -8.0, z: -5.0 };   // 책방
-  const GA = { x: 0.0, z: -5.0 };    // 전시
-  const MK = { x: 8.0, z: -5.0 };    // 마켓
-  const CI = { x: -8.2, z: 1.2 };    // 모임
-  const CH = { x: 8.2, z: 1.2 };     // 챌린지
-  const CW = { x: -6.2, z: 6.1 };    // 공동 작업
-  const TE = { x: 6.2, z: 6.1 };     // 신기술
-
-  const massageChairs = [
-    { x: -1.6, z: -0.55, ry: 0.1 },
-    { x: -0.35, z: -0.55, ry: -0.1 },
-  ];
-  const sofa = { x: 1.55, z: 2.05, ry: Math.PI, w: 1.55, d: 0.78 };
-
-  // 책방 가구(로컬 → 월드)
-  const bsShelves = [
-    { x: -2.1, z: -2.45, ry: 0, w: 1.65, wing: 'A' as const },
-    { x: 0, z: -2.45, ry: 0, w: 1.65, wing: 'A' as const, faceOut: true },
-    { x: 2.1, z: -2.45, ry: 0, w: 1.65, wing: 'A' as const },
-    { x: -3.2, z: -0.7, ry: Math.PI / 2, w: 1.5, wing: 'B' as const },
-    { x: -3.2, z: 0.85, ry: Math.PI / 2, w: 1.2, wing: 'B' as const, faceOut: true },
-  ].map((s) => shift(s, BS.x, BS.z));
-  const bsIslands = [
-    { x: -1.0, z: -0.2, ry: 0, w: 1.25, d: 0.72, h: 0.78, kind: 'flat' as const },
-    { x: 1.0, z: -0.2, ry: 0, w: 1.25, d: 0.72, h: 0.92, kind: 'stand' as const },
-  ].map((s) => shift(s, BS.x, BS.z));
-  const bsArm = shift({ x: -2.4, z: 1.55, ry: Math.PI * 0.78 }, BS.x, BS.z);
-  const bsCounter = shift({ x: 2.85, z: 1.35, ry: -Math.PI / 2, w: 1.35, d: 0.52, h: 0.95 }, BS.x, BS.z);
-
-  // 전시
-  const wallPad = 0.04;
-  const exhibits = [
-    { x: -2.1, z: -2.35, ry: 0, y: 1.55, w: 1.0, h: 0.75, seed: 11, title: '실험 01 · 창가의 오후' },
-    { x: 0, z: -2.35, ry: 0, y: 1.6, w: 1.25, h: 0.9, seed: 23, title: '실험 02 · 겹쳐 읽기' },
-    { x: 2.1, z: -2.35, ry: 0, y: 1.55, w: 1.0, h: 0.75, seed: 37, title: '실험 03 · 서가의 리듬' },
-    { x: -3.25, z: -0.6, ry: Math.PI / 2, y: 1.55, w: 0.8, h: 1.0, seed: 41, title: '실험 04 · 작은 모임' },
-    { x: 3.25, z: -0.6, ry: -Math.PI / 2, y: 1.55, w: 0.8, h: 1.0, seed: 67, title: '실험 06 · 문과 문 사이' },
-  ].map((e) => shift({ ...e, z: e.z + wallPad * 0 }, GA.x, GA.z));
-  const pedestals = [
-    { x: -1.4, z: -0.55, kind: 'knot' as const },
-    { x: 1.4, z: -0.55, kind: 'stack' as const },
-    { x: 0, z: 0.85, kind: 'ring' as const },
-  ].map((p) => shift(p, GA.x, GA.z));
-  const gaBench = shift({ x: 0, z: 0.9, ry: Math.PI, w: 1.45, d: 0.42, h: 0.43 }, GA.x, GA.z);
-
-  // 마켓: 매대 3 + 스툴
-  const mkIslands = [
-    { x: -1.5, z: -0.4, ry: 0, w: 1.4, d: 0.7, h: 0.85, kind: 'stand' as const },
-    { x: 0.2, z: -0.4, ry: 0, w: 1.4, d: 0.7, h: 0.85, kind: 'flat' as const },
-    { x: 1.8, z: 0.9, ry: Math.PI / 2, w: 1.2, d: 0.65, h: 0.9, kind: 'stand' as const },
-  ].map((s) => shift(s, MK.x, MK.z));
-  // 모임 원탁
-  const circleR = new Rng(2018);
-  const circleChairs = Array.from({ length: 5 }, (_, i) => {
-    const angle = (i * Math.PI * 2) / 5;
-    const x = Math.sin(angle) * 1.05;
-    const z = Math.cos(angle) * 1.05;
-    return shift(
-      { x, z, ry: Math.atan2(-x, -z) + circleR.range(-0.02, 0.02) },
-      CI.x, CI.z,
-    );
-  });
-  const roundTable = { x: CI.x, z: CI.z, r: 0.62, h: 0.73 };
-
-  // 챌린지: 보드 쪽 벤치 + 중앙 스탠드 테이블
-  const chBench = shift({ x: 0, z: 1.5, ry: Math.PI, w: 1.6, d: 0.42, h: 0.43 }, CH.x, CH.z);
-  const chIsland = shift({ x: 0, z: -0.2, ry: 0, w: 1.1, d: 0.7, h: 0.95, kind: 'stand' as const }, CH.x, CH.z);
-
-  // 공동 작업 책상 3
-  const cwDesks = [
-    { x: -2.2, z: -0.35, ry: 0, w: 1.2, d: 0.6, h: 0.73, seatId: 'desk-1' },
-    { x: 0.1, z: -0.35, ry: 0, w: 1.2, d: 0.6, h: 0.73, seatId: 'desk-2' },
-    { x: 2.4, z: -0.35, ry: 0, w: 1.2, d: 0.6, h: 0.73, seatId: 'desk-3' },
-  ].map((d) => shift(d, CW.x, CW.z));
-
-  // 신기술: 실험 벤치 2 + 대표 책상
-  const teDesks = [
-    { x: -1.6, z: -0.2, ry: 0, w: 1.35, d: 0.7, h: 0.78, seatId: 'desk-tech-1' },
-    { x: 1.5, z: -0.2, ry: 0, w: 1.35, d: 0.7, h: 0.78, seatId: 'desk-tech-2' },
-  ].map((d) => shift(d, TE.x, TE.z));
-
-  const seats: Seat[] = [
-    ...massageChairs.map((c, i) => ({
-      ...c, id: `massage-${i + 1}`, y: 0.47, approach: 1 as const, from: { x: c.x, z: c.z + 0.9 },
-    })),
-    ...[0.4, 0, -0.4].map((dx, i) => ({
-      id: `sofa-${i + 1}`, x: sofa.x + dx, z: sofa.z - 0.09, ry: Math.PI, y: 0.49, approach: 1 as const,
-      from: { x: sofa.x + dx, z: sofa.z + 0.85 },
-    })),
-    { id: 'bench-1', x: -2.35, z: 3.55, ry: Math.PI, y: 0.49, approach: 1 as const },
-    { id: 'bench-2', x: -1.7, z: 3.55, ry: Math.PI, y: 0.49, approach: 1 as const },
-    { id: 'cafe-1', x: -2.55, z: 0.55, ry: 0, y: 0.475, approach: -1 as const },
-    { id: 'arm-bs', ...bsArm, y: 0.44, approach: 1 as const },
-    ...circleChairs.map((c, i) => ({
-      ...c, id: `circle-${i + 1}`, y: 0.475, approach: -1 as const,
-      from: { x: CI.x + (c.x - CI.x) * 1.35, z: CI.z + (c.z - CI.z) * 1.35 },
-    })),
-    { id: 'bench-ga-1', x: gaBench.x - 0.35, z: gaBench.z, ry: Math.PI, y: 0.49, approach: 1 as const },
-    { id: 'bench-ga-2', x: gaBench.x + 0.35, z: gaBench.z, ry: Math.PI, y: 0.49, approach: 1 as const },
-    { id: 'bench-ch-1', x: chBench.x - 0.4, z: chBench.z, ry: Math.PI, y: 0.49, approach: 1 as const },
-    { id: 'bench-ch-2', x: chBench.x + 0.4, z: chBench.z, ry: Math.PI, y: 0.49, approach: 1 as const },
-    ...cwDesks.map((d) => ({
-      id: d.seatId, x: d.x - 0.06, z: d.z + 0.55, ry: Math.PI, y: 0.475, approach: -1 as const,
-    })),
-    ...teDesks.map((d) => ({
-      id: d.seatId, x: d.x - 0.06, z: d.z + 0.58, ry: Math.PI, y: 0.475, approach: -1 as const,
-    })),
-  ];
-
-  const spawn = ZONE_BOUNDS[0].spawn;
-
-  // 칸막이: 가로·세로로 구역을 나누고 문틀만 비운다
-  const H = 2.75;
-  const partitions: PartitionWall[] = [
-    // 북열(책방|전시|마켓) 남쪽 경계
-    wall(-8, -1.7, 0, 8.2, 0),
-    wall(0, -1.7, 0, 7.0, 0),
-    wall(8, -1.7, 0, 8.2, 0),
-    // 북열 세로 칸막이
-    wall(-3.7, -4.85, Math.PI / 2, 6.2, 0.2),
-    wall(3.7, -4.85, Math.PI / 2, 6.2, -0.2),
-    // 중열 세로(모임|광장|챌린지)
-    wall(-3.7, 1.4, Math.PI / 2, 5.8, 0),
-    wall(3.7, 1.4, Math.PI / 2, 5.8, 0),
-    // 남열(공동|신기술) 북쪽 경계
-    wall(-6.1, 4.5, 0, 11.5, -2.0),
-    wall(6.1, 4.5, 0, 11.5, 2.0),
-    // 공동|신기술 사이
-    wall(0, 6.25, Math.PI / 2, 3.3, 0),
-  ];
-  void H;
-
-  // 빠른 이동용 문 표시(클릭하면 구역으로 워프). 문틀은 open.
-  const portals: PortalDef[] = [
-    { to: 'bookshop', x: -8, z: -1.55, ry: Math.PI, w: 1.2, d: 0.14, label: '책방 실험실', open: true },
-    { to: 'gallery', x: 0, z: -1.55, ry: Math.PI, w: 1.2, d: 0.14, label: '전시 실험실', open: true },
-    { to: 'market', x: 8, z: -1.55, ry: Math.PI, w: 1.2, d: 0.14, label: '마켓 실험실', open: true },
-    { to: 'circle', x: -3.55, z: 1.2, ry: -Math.PI / 2, w: 1.15, d: 0.14, label: '모임 실험실', open: true },
-    { to: 'challenge', x: 3.55, z: 1.2, ry: Math.PI / 2, w: 1.15, d: 0.14, label: '챌린지 실험실', open: true },
-    { to: 'cowork', x: -6, z: 4.35, ry: 0, w: 1.2, d: 0.14, label: '공동 작업실', open: true },
-    { to: 'tech', x: 6, z: 4.35, ry: 0, w: 1.2, d: 0.14, label: '신기술 개발실', open: true },
-    { to: 'shop', x: 0, z: 4.35, ry: Math.PI, w: 1.3, d: 0.14, label: '실험실 광장', open: true },
-  ];
-
+function emptyBase(id: SpaceId, label: string, room: RoomBounds): Omit<SpaceLayout,
+  'openings' | 'shelves' | 'islands' | 'seats' | 'spawn' | 'spawns' | 'portals' | 'pendants' | 'floorLamps' | 'floorPlants' | 'chairs'
+> {
   return {
-    id: 'shop',
-    label: LABELS.shop,
-    room: CAMPUS,
-    openings: [
-      { cx: -1.4, w: 2.4, y0: 0.7, y1: 2.55, kind: 'window' },
-      { cx: 1.4, w: 2.4, y0: 0.7, y1: 2.55, kind: 'window' },
-    ],
-    shelves: [
-      ...bsShelves,
-      // 마켓 뒷벽 선반
-      shift({ x: -1.4, z: -2.45, ry: 0, w: 1.5, wing: 'A' as const }, MK.x, MK.z),
-      shift({ x: 0.3, z: -2.45, ry: 0, w: 1.5, wing: 'A' as const, faceOut: true }, MK.x, MK.z),
-      // 신기술 벽 선반
-      shift({ x: 3.4, z: 0.2, ry: -Math.PI / 2, w: 1.4, wing: 'C' as const }, TE.x, TE.z),
-    ],
-    islands: [...bsIslands, ...mkIslands, chIsland],
-    partitions,
-    readingTable: null,
-    roundTable,
-    armchairs: [bsArm],
-    sideTable: shift({ x: -2.9, z: 0.9, ry: 0, r: 0.18, h: 0.5 }, BS.x, BS.z),
-    chairs: circleChairs,
-    storeTable: null,
-    storeChairs: [],
-    sofa,
-    coffeeTable: { x: 1.55, z: 1.05, ry: 0, w: 0.75, d: 0.4, h: 0.4 },
-    rug: { x: 1.55, z: 1.5, w: 2.4, d: 1.8 },
-    bench: gaBench,
-    barTable: null,
-    counter: bsCounter,
-    massageChairs,
-    coffeeBar: { x: -3.1, z: 1.5, ry: Math.PI / 2, w: 1.4, d: 0.48, h: 0.9 },
-    cafeTable: { x: -2.55, z: 1.15, r: 0.28, h: 0.68 },
-    workDesk: cwDesks[0],
-    extraDesks: [...cwDesks.slice(1), ...teDesks],
-    exhibits,
-    pedestals,
-    floorLamps: [
-      { x: -2.8, z: -0.9, ry: 0 },
-      { x: 2.6, z: 2.0, ry: 0 },
-      shift({ x: -3.0, z: 1.9, ry: 0 }, BS.x, BS.z),
-      shift({ x: -2.9, z: -1.7, ry: 0 }, GA.x, GA.z),
-      shift({ x: 2.9, z: -1.7, ry: 0 }, GA.x, GA.z),
-      shift({ x: 2.8, z: 1.6, ry: 0 }, CH.x, CH.z),
-    ],
-    pendants: [
-      { x: 1.35, z: 1.1, drop: 0.7 },
-      { x: -2.6, z: 1.3, drop: 0.7 },
-      shift({ x: -1.0, z: -0.2, drop: 0.75 }, BS.x, BS.z),
-      shift({ x: 1.0, z: -0.2, drop: 0.75 }, BS.x, BS.z),
-      { x: roundTable.x, z: roundTable.z, drop: 0.65 },
-      shift({ x: 0, z: 0.2, drop: 0.85 }, GA.x, GA.z),
-      shift({ x: 0, z: -0.2, drop: 0.7 }, CH.x, CH.z),
-      shift({ x: 0.1, z: -0.2, drop: 0.55 }, CW.x, CW.z),
-      shift({ x: 0, z: -0.1, drop: 0.55 }, TE.x, TE.z),
-    ],
-    floorPlants: [
-      { x: 0.2, z: -1.0, scale: 0.8 },
-      { x: 3.2, z: 3.6, scale: 0.75 },
-      { x: -3.2, z: 3.6, scale: 0.8 },
-      shift({ x: 2.9, z: 1.9, scale: 0.7 }, BS.x, BS.z),
-      shift({ x: -2.9, z: 1.7, scale: 0.65 }, GA.x, GA.z),
-      shift({ x: 2.9, z: 1.7, scale: 0.65 }, GA.x, GA.z),
-      shift({ x: -2.6, z: 1.5, scale: 0.7 }, CI.x, CI.z),
-      shift({ x: 2.8, z: -1.5, scale: 0.7 }, MK.x, MK.z),
-    ],
-    seats,
-    spawn,
-    spawns: [spawn, { x: 1.4, z: 2.5, ry: Math.PI }, { x: -1.4, z: 2.5, ry: Math.PI }],
-    portals,
+    id, label, room,
+    partitions: [],
+    sofa: null, coffeeTable: null, rug: null, bench: null, barTable: null, counter: null,
+    armchairs: [], sideTable: null, roundTable: null, readingTable: null, storeTable: null, storeChairs: [],
+    massageChairs: [], coffeeBar: null, cafeTable: null, workDesk: null, exhibits: [], pedestals: [],
   };
 }
 
-const CAMPUS_LAYOUT = makeCampus();
-export const SPACE_LAYOUTS: Record<SpaceId, SpaceLayout> = Object.fromEntries(
-  SPACE_ORDER.map((id) => [id, CAMPUS_LAYOUT]),
-) as Record<SpaceId, SpaceLayout>;
+function makeShop(): SpaceLayout {
+  // 실험실 로비: 10×7m. 뒤 창가에 쉬는 자리, 왼쪽 커피 코너, 벽마다 실험실 문.
+  // 입장 자리는 앞벽에서 1.6m — 따라가기 카메라가 아바타 뒤에 설 자리가 있다
+  const spawn = { x: 0, z: 1.9, ry: Math.PI };
+  const massageChairs = [{ x: -2.2, z: -2.65, ry: 0.12 }, { x: -0.95, z: -2.65, ry: -0.12 }];
+  const sofa = { x: 1.55, z: 0.35, ry: Math.PI, w: 1.6, d: 0.8 };
+  const B = 3.5, R = 5;
+  // 뒷벽 양 끝: 책방·전시 실험실, 오른쪽 벽: 모임 실험실
+  return { ...emptyBase('shop', '로비', roomOf(10, 7, 3.0)),
+    openings: [{ cx: -1.55, w: 2.5, y0: .65, y1: 2.5, kind: 'window' }, { cx: 1.55, w: 2.5, y0: .65, y1: 2.5, kind: 'window' }],
+    shelves: [{ x: -R + 0.21, z: -2.3, ry: Math.PI / 2, w: 1.65, wing: 'A' }],
+    islands: [], chairs: [], massageChairs, sofa,
+    coffeeTable: { x: 1.55, z: -0.8, ry: 0, w: 0.8, d: 0.4, h: 0.4 },
+    coffeeBar: { x: -R + 0.28, z: 0.65, ry: Math.PI / 2, w: 1.5, d: 0.5, h: 0.9 },
+    cafeTable: { x: -3.25, z: 0.45, r: 0.3, h: 0.68 },
+    sideTable: { x: -1.58, z: -3.0, ry: 0, r: .2, h: .5 },
+    bench: { x: -2.6, z: B - 0.4, ry: Math.PI, w: 1.3, d: .4, h: .43 },
+    rug: { x: 1.55, z: -0.25, w: 2.6, d: 2.0 },
+    floorLamps: [{ x: -3.1, z: -3.05, ry: 0 }, { x: 3.0, z: 0.9, ry: 0 }],
+    floorPlants: [{ x: 0.35, z: -3.1, scale: .8 }, { x: 4.45, z: 3.05, scale: .75 }, { x: -4.5, z: 3.05, scale: .85 }, { x: 4.5, z: -3.05, scale: .7 }],
+    pendants: [{ x: 1.55, z: -0.2, drop: .7 }, { x: -3.3, z: 0.6, drop: .7 }, { x: -1.55, z: -2.3, drop: .8 }],
+    seats: [
+      ...massageChairs.map((c, i) => ({ ...c, id: `massage-${i + 1}`, y: 0.47, approach: 1 as const, from: { x: c.x, z: c.z + 0.9 } })),
+      // 소파는 창 쪽(-z)을 본다
+      ...[0.42, 0, -0.42].map((dx, i) => ({ id: `sofa-${i + 1}`, x: sofa.x + dx, z: sofa.z - 0.09, ry: Math.PI, y: 0.49, approach: 1 as const })),
+      { id: 'bench-1', x: -2.92, z: B - 0.4, ry: Math.PI, y: .49, approach: 1 },
+      { id: 'bench-2', x: -2.28, z: B - 0.4, ry: Math.PI, y: .49, approach: 1 },
+      { id: 'cafe-1', x: -3.25, z: -0.13, ry: 0, y: .475, approach: -1 },
+    ],
+    spawn, spawns: [spawn, { x: 1.3, z: 2.0, ry: Math.PI }, { x: -1.3, z: 2.0, ry: Math.PI }],
+    portals: [
+      { to: 'bookshop', x: -3.9, z: -B + 0.08, ry: 0, w: .86, d: .16, label: '책방 실험실' },
+      { to: 'gallery', x: 3.9, z: -B + 0.08, ry: 0, w: .86, d: .16, label: '전시 실험실' },
+      { to: 'circle', x: R - 0.08, z: -0.6, ry: -Math.PI / 2, w: .86, d: .16, label: '모임 실험실' },
+    ],
+  };
+}
+/** 책방 실험실: 벽 서가 + 가운데 매대 두 개 + 계산대 + 읽는 의자. 7×5.5m */
+function makeBookshop(): SpaceLayout {
+  const L = -3.5, R = 3.5, B = -2.75, F = 2.75;
+  const spawn = { x: -1.6, z: 1.6, ry: Math.PI };
+  const arm = { x: -2.55, z: 1.75, ry: Math.PI * 0.78 };
+  return { ...emptyBase('bookshop', '책방 실험실', roomOf(7, 5.5, 2.9)),
+    openings: [],
+    shelves: [
+      { x: -2.1, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' },
+      { x: 0, z: B + 0.21, ry: 0, w: 1.65, wing: 'A', faceOut: true },
+      { x: 2.1, z: B + 0.21, ry: 0, w: 1.65, wing: 'A' },
+      { x: L + 0.21, z: -0.85, ry: Math.PI / 2, w: 1.65, wing: 'B' },
+      { x: L + 0.21, z: 0.85, ry: Math.PI / 2, w: 1.2, wing: 'B', faceOut: true },
+      { x: R - 0.21, z: -0.85, ry: -Math.PI / 2, w: 1.65, wing: 'C' },
+    ],
+    islands: [
+      { x: -1.05, z: -0.35, ry: 0, w: 1.3, d: 0.75, h: 0.78, kind: 'flat' },
+      { x: 1.05, z: -0.35, ry: 0, w: 1.3, d: 0.75, h: 0.92, kind: 'stand' },
+    ],
+    chairs: [],
+    counter: { x: R - 0.5, z: 1.55, ry: -Math.PI / 2, w: 1.4, d: 0.55, h: 0.95 },
+    armchairs: [arm],
+    sideTable: { x: -3.05, z: 1.05, ry: 0, r: .18, h: .5 },
+    rug: { x: 0, z: -0.35, w: 3.6, d: 1.9 },
+    floorLamps: [{ x: -3.1, z: 2.35, ry: 0 }, { x: 2.85, z: 0.55, ry: 0 }],
+    floorPlants: [{ x: 3.05, z: 2.35, scale: .75 }, { x: -3.1, z: -0.2, scale: .62 }],
+    pendants: [{ x: -1.05, z: -0.35, drop: .75 }, { x: 1.05, z: -0.35, drop: .75 }, { x: 2.6, z: 1.55, drop: .6 }],
+    seats: [{ id: 'arm-1', ...arm, y: 0.44, approach: 1 }],
+    spawn, spawns: [spawn, { x: -0.6, z: 1.7, ry: Math.PI }],
+    portals: [{ to: 'shop', x: -1.6, z: F - 0.08, ry: Math.PI, w: .86, d: .16, label: '로비' }],
+  };
+}
+/** 전시실: 벽에 작품, 가운데 벤치, 받침대 위 조형물. 7×5m, 천장이 조금 높다 */
+function makeGallery(): SpaceLayout {
+  const L = -3.5, R = 3.5, B = -2.5, F = 2.5;
+  // 앞벽에서 1.6m, 벤치 옆: 들어서면 뒷벽 작품이 정면에 보인다
+  const spawn = { x: -1.6, z: 0.9, ry: Math.PI };
+  const wall = 0.03;
+  return { ...emptyBase('gallery', '전시 실험실', roomOf(7, 5, 3.2)),
+    openings: [], shelves: [], islands: [], chairs: [],
+    bench: { x: 0, z: 0.55, ry: Math.PI, w: 1.5, d: .42, h: .43 },
+    exhibits: [
+      { x: -2.2, z: B + wall, ry: 0, y: 1.55, w: 1.0, h: 0.75, seed: 11, title: '실험 01 · 창가의 오후' },
+      { x: 0, z: B + wall, ry: 0, y: 1.6, w: 1.3, h: 0.95, seed: 23, title: '실험 02 · 겹쳐 읽기' },
+      { x: 2.2, z: B + wall, ry: 0, y: 1.55, w: 1.0, h: 0.75, seed: 37, title: '실험 03 · 서가의 리듬' },
+      { x: L + wall, z: -0.8, ry: Math.PI / 2, y: 1.55, w: 0.8, h: 1.0, seed: 41, title: '실험 04 · 작은 모임' },
+      { x: L + wall, z: 1.0, ry: Math.PI / 2, y: 1.55, w: 0.8, h: 0.6, seed: 53, title: '실험 05 · 밤의 책상' },
+      { x: R - wall, z: -0.8, ry: -Math.PI / 2, y: 1.55, w: 0.8, h: 1.0, seed: 67, title: '실험 06 · 문과 문 사이' },
+      { x: R - wall, z: 1.0, ry: -Math.PI / 2, y: 1.55, w: 0.8, h: 0.6, seed: 79, title: '실험 07 · 빗소리' },
+      { x: 1.3, z: F - wall, ry: Math.PI, y: 1.55, w: 1.1, h: 0.8, seed: 83, title: '실험 08 · 다음 전시' },
+    ],
+    pedestals: [
+      { x: -1.6, z: -0.75, kind: 'knot' },
+      { x: 1.6, z: -0.75, kind: 'stack' },
+      { x: 2.4, z: 1.5, kind: 'ring' },
+      { x: -2.5, z: 1.45, kind: 'ring' },
+    ],
+    rug: { x: 0, z: 0.55, w: 2.4, d: 1.5 },
+    floorLamps: [{ x: -3.15, z: -1.9, ry: 0 }, { x: 3.15, z: -1.9, ry: 0 }],
+    floorPlants: [{ x: -3.05, z: 2.1, scale: .7 }, { x: 3.1, z: 2.05, scale: .65 }],
+    pendants: [{ x: -1.6, z: -0.75, drop: .9 }, { x: 1.6, z: -0.75, drop: .9 }, { x: 0, z: 0.6, drop: .8 }, { x: -2.5, z: 1.45, drop: .85 }],
+    seats: [
+      { id: 'bench-1', x: -0.37, z: 0.55, ry: Math.PI, y: .49, approach: 1 },
+      { id: 'bench-2', x: 0.37, z: 0.55, ry: Math.PI, y: .49, approach: 1 },
+    ],
+    spawn, spawns: [spawn, { x: -2.2, z: 1.2, ry: Math.PI }],
+    portals: [{ to: 'shop', x: -2.2, z: F - 0.08, ry: Math.PI, w: .86, d: .16, label: '로비' }],
+  };
+}
+function makeCircle(): SpaceLayout {
+  const r = new Rng(2018);
+  const chairs = Array.from({ length: 5 }, (_, i) => {
+    const angle = i * Math.PI * 2 / 5;
+    const x = Math.sin(angle) * 1.08, z = Math.cos(angle) * 1.08;
+    return { x, z, ry: Math.atan2(-x, -z) + r.range(-0.025, 0.025) };
+  });
+  // 뒷벽에서 떨어뜨려 카메라가 아바타 뒤에 서게 한다(의자와도 0.7m 이상)
+  const spawn = { x: -1.45, z: 0.95, ry: Math.PI };
+  return { ...emptyBase('circle', '모임 실험실', roomOf(4.2, 4.2, 2.7)),
+    openings: [],
+    shelves: [{ x: 1.88, z: -0.95, ry: -Math.PI / 2, w: 1.2, wing: 'C' }],
+    islands: [], chairs,
+    roundTable: { x: 0, z: 0, r: 0.65, h: 0.73 },
+    rug: { x: 0, z: 0, w: 2.65, d: 2.65, round: true },
+    seats: chairs.map((c, i) => ({ ...c, id: `circle-${i+1}`, y: 0.475, approach: -1,
+      from: { x: c.x * 1.35, z: c.z * 1.35 } })),
+    floorLamps: [], floorPlants: [{x: -1.7, z: -0.7, scale: 0.8}],
+    pendants: [{ x: 0, z: 0, drop: 0.65 }],
+    spawn, spawns: [spawn, { x: 1.45, z: 0.95, ry: Math.PI }],
+    portals: [{ to: 'shop', x: -1.25, z: -2.02, ry: 0, w: 0.86, d: 0.16, label: '로비' }],
+  };
+}
+export const SPACE_LAYOUTS: Record<SpaceId, SpaceLayout> = {
+  shop: makeShop(), bookshop: makeBookshop(), circle: makeCircle(), gallery: makeGallery(),
+};
+export const SPACE_ORDER: SpaceId[] = ['shop', 'bookshop', 'circle', 'gallery'];
 
-// ---------- 활성 구역(라벨·기능) / 캠퍼스 레이아웃 상수 ----------
+// ---------- 활성 레이아웃(빌드·내비·클릭이 읽음) ----------
 let activeId: SpaceId = 'shop';
 
+/** 활성 공간 id */
 export function currentSpaceId(): SpaceId {
   return activeId;
 }
 
 export function currentSpace(): SpaceLayout {
-  return CAMPUS_LAYOUT;
+  return SPACE_LAYOUTS[activeId];
 }
 
-/** 구역별 정원(NPC 제외). */
-export const SPACE_CAPACITY: Record<SpaceId, number> = {
-  shop: 2, bookshop: 2, circle: 2, gallery: 2,
-  market: 2, challenge: 2, cowork: 2, tech: 2,
-};
+/** 공간별 최대 인원. 차면 들어올 수 없다. */
+export const SPACE_CAPACITY: Record<SpaceId, number> = { shop: 12, bookshop: 8, circle: 6, gallery: 8 };
 
 export function spaceCapacity(id: SpaceId = activeId): number {
   return SPACE_CAPACITY[id];
 }
 
 export function spaceLabel(id: SpaceId = activeId): string {
-  return LABELS[id];
-}
-
-/** 구역만 바꾸고, 가구 상수는 항상 캠퍼스를 쓴다. */
-export function setActiveZone(id: SpaceId): void {
-  activeId = id;
+  return SPACE_LAYOUTS[id].label;
 }
 
 /** 활성 레이아웃 필드를 모듈 export 상수의 내용에 반영 */
-export function applyLayout(id: SpaceId = 'shop'): SpaceLayout {
+export function applyLayout(id: SpaceId): SpaceLayout {
   activeId = id;
-  const L = CAMPUS_LAYOUT;
+  const L = SPACE_LAYOUTS[id];
   Object.assign(ROOM, L.room);
   BACK_OPENINGS.splice(0, BACK_OPENINGS.length, ...L.openings);
   SHELVES.splice(0, SHELVES.length, ...L.shelves);
@@ -427,7 +292,7 @@ export function applyLayout(id: SpaceId = 'shop'): SpaceLayout {
   FLOOR_PLANTS.splice(0, FLOOR_PLANTS.length, ...L.floorPlants);
   SEATS.splice(0, SEATS.length, ...L.seats);
   SPAWNS.splice(0, SPAWNS.length, ...L.spawns);
-  Object.assign(SPAWN, zoneSpawn(id));
+  Object.assign(SPAWN, L.spawn);
 
   assignOrClear(ROUND_TABLE, L.roundTable);
   assignOrClear(READING_TABLE, L.readingTable);
@@ -441,16 +306,7 @@ export function applyLayout(id: SpaceId = 'shop'): SpaceLayout {
   MASSAGE_CHAIRS.splice(0, MASSAGE_CHAIRS.length, ...L.massageChairs);
   assignOrClear(COFFEE_BAR, L.coffeeBar);
   assignOrClear(CAFE_TABLE, L.cafeTable);
-  // 작업 책상: 구역에 따라 대표 책상 선택
-  if (id === 'tech') {
-    const techDesk = L.extraDesks.find((d) => d.seatId.startsWith('desk-tech')) ?? L.extraDesks[0];
-    assignOrClear(WORK_DESK, techDesk ?? L.workDesk);
-  } else if (id === 'cowork') {
-    assignOrClear(WORK_DESK, L.workDesk);
-  } else {
-    assignOrClear(WORK_DESK, L.workDesk);
-  }
-  EXTRA_DESKS.splice(0, EXTRA_DESKS.length, ...L.extraDesks);
+  assignOrClear(WORK_DESK, L.workDesk);
   PORTALS.splice(0, PORTALS.length, ...L.portals);
   EXHIBITS.splice(0, EXHIBITS.length, ...L.exhibits);
   PEDESTALS.splice(0, PEDESTALS.length, ...L.pedestals);
@@ -464,12 +320,14 @@ function assignOrClear<T extends object>(target: T, src: Partial<T> | null | und
     return;
   }
   delete (target as { _empty?: boolean })._empty;
+  // 이전 공간에만 있던 옵션(round 등)이 남지 않게 지움
   for (const k of Object.keys(target) as string[]) {
     if (!(k in src)) delete (target as Record<string, unknown>)[k];
   }
   Object.assign(target, src);
 }
 
+/** 활성 레이아웃에 해당 가구가 있는지(비어 표시면 false). */
 export function isPresent(obj: object | null | undefined): boolean {
   if (!obj) return false;
   const o = obj as { _empty?: boolean; w?: number; rows?: number };
@@ -479,31 +337,31 @@ export function isPresent(obj: object | null | undefined): boolean {
   return true;
 }
 
-const HUB = CAMPUS_LAYOUT;
+// 허브로 초기화한 mutable export (기존 import 호환)
+const HUB = SPACE_LAYOUTS.shop;
 export const ROOM: RoomBounds = { ...HUB.room };
 export const BACK_OPENINGS: Opening[] = [...HUB.openings];
 export const SHELVES = [...HUB.shelves];
 export const ISLANDS = [...HUB.islands];
 export const PARTITIONS: PartitionWall[] = [...HUB.partitions];
 export const ISLAND = ISLANDS[0];
-export const READING_TABLE: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
-export const ROUND_TABLE = { ...(HUB.roundTable!) };
-export const ARMCHAIRS: Placement[] = [...HUB.armchairs];
-export const SIDE_TABLE = { ...(HUB.sideTable!) };
+export const READING_TABLE: Placement & { w: number; d: number; h: number } = { ...(HUB.readingTable!) };
+export const ROUND_TABLE = { _empty: true } as unknown as NonNullable<SpaceLayout['roundTable']>;
+export const ARMCHAIRS: Placement[] = [];
+export const SIDE_TABLE = { _empty: true } as unknown as NonNullable<SpaceLayout['sideTable']>;
 export const CHAIRS: Placement[] = [...HUB.chairs];
 export const STORE_TABLE: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
 export const STORE_CHAIRS: Placement[] = [];
 export const SOFA: Placement & { w: number; d: number } = { ...(HUB.sofa!) };
 export const COFFEE_TABLE: Placement & { w: number; d: number; h: number } = { ...(HUB.coffeeTable!) };
 export const RUG = { ...HUB.rug! };
-export const BENCH: Placement & { w: number; d: number; h: number } = { ...(HUB.bench!) };
-export const BAR_TABLE: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
+export const BENCH: Placement & { w: number; d: number; h: number } = { x: 0, z: 0, ry: 0, w: 0, d: 0, h: 0, _empty: true } as never;
+export const BAR_TABLE: Placement & { w: number; d: number; h: number } = { ...(HUB.barTable!) };
 export const COUNTER: Placement & { w: number; d: number; h: number } = { ...(HUB.counter!) };
-export const MASSAGE_CHAIRS: Placement[] = [...HUB.massageChairs];
-export const COFFEE_BAR = { ...(HUB.coffeeBar!) };
-export const CAFE_TABLE = { ...(HUB.cafeTable!) };
-export const WORK_DESK: Placement & { w: number; d: number; h: number } = { ...(HUB.workDesk!) };
-export const EXTRA_DESKS: (Placement & { w: number; d: number; h: number; seatId: string })[] = [...HUB.extraDesks];
+export const MASSAGE_CHAIRS: Placement[] = [];
+export const COFFEE_BAR = { _empty: true } as unknown as NonNullable<SpaceLayout['coffeeBar']>;
+export const CAFE_TABLE = { _empty: true } as unknown as NonNullable<SpaceLayout['cafeTable']>;
+export const WORK_DESK = { _empty: true } as unknown as NonNullable<SpaceLayout['workDesk']>;
 export const FLOOR_LAMPS: Placement[] = [...HUB.floorLamps];
 export const PENDANTS: { x: number; z: number; drop: number }[] = [...HUB.pendants];
 export const FLOOR_PLANTS: { x: number; z: number; scale: number }[] = [...HUB.floorPlants];
@@ -561,8 +419,10 @@ export function colliders(): Collider[] {
     rect(READING_TABLE.x, READING_TABLE.z, READING_TABLE.w, READING_TABLE.d, 0, READING_TABLE.h);
   }
   if (isPresent(ROUND_TABLE)) rect(ROUND_TABLE.x, ROUND_TABLE.z, ROUND_TABLE.r * 2, ROUND_TABLE.r * 2, 0, ROUND_TABLE.h);
+  // 全 좌석: 의자 방석 높이의 개별 클릭 상자. 큰 가구가 뒷좌석 클릭을 가리지 않는다.
   for (const seat of SEATS) rect(seat.x, seat.z, 0.44, 0.44, seat.ry, seat.y + 0.04, [seat.id]);
   if (isPresent(SOFA)) {
+    // 소파 등받이는 지나갈 수 없다(앉는 자리는 좌석 상자가 따로 있다)
     const off = SOFA.d / 2 - 0.1;
     rect(SOFA.x - Math.sin(SOFA.ry) * off, SOFA.z - Math.cos(SOFA.ry) * off, SOFA.w, 0.2, SOFA.ry, 0.8);
   }
@@ -570,21 +430,27 @@ export function colliders(): Collider[] {
   if (isPresent(COFFEE_BAR)) rect(COFFEE_BAR.x, COFFEE_BAR.z, COFFEE_BAR.w, COFFEE_BAR.d, COFFEE_BAR.ry, COFFEE_BAR.h);
   if (isPresent(CAFE_TABLE)) rect(CAFE_TABLE.x, CAFE_TABLE.z, CAFE_TABLE.r * 2, CAFE_TABLE.r * 2, 0, CAFE_TABLE.h);
   if (isPresent(WORK_DESK)) rect(WORK_DESK.x, WORK_DESK.z, WORK_DESK.w, WORK_DESK.d, WORK_DESK.ry, WORK_DESK.h);
-  for (const d of EXTRA_DESKS) rect(d.x, d.z, d.w, d.d, d.ry, d.h);
+  // 안마 의자: 앉는 자리(좌석 상자) 양옆의 몸통과 등받이는 지나갈 수 없다
   for (const m of MASSAGE_CHAIRS) {
     rect(m.x - Math.sin(m.ry) * 0.42, m.z - Math.cos(m.ry) * 0.42, 0.84, 0.36, m.ry, 1.25);
   }
-  if (isPresent(BENCH)) rect(BENCH.x, BENCH.z, BENCH.w, BENCH.d * 0.3, BENCH.ry, BENCH.h);
+  if (isPresent(BENCH)) {
+    const ids = SEATS.filter((s) => s.id.startsWith('bench-')).map((s) => s.id);
+    void ids;
+  }
   if (isPresent(BAR_TABLE)) {
     rect(BAR_TABLE.x, BAR_TABLE.z, BAR_TABLE.w, BAR_TABLE.d, 0, BAR_TABLE.h);
+    // 바 스툴은 따로(앉기 히트)
     for (const s of SEATS.filter((seat) => seat.id.startsWith('bar-') || seat.id.startsWith('counter-'))) {
       rect(s.x, s.z, 0.4, 0.4, 0, 0.95, [s.id]);
     }
   }
-  if (isPresent(SIDE_TABLE)) rect(SIDE_TABLE.x, SIDE_TABLE.z, SIDE_TABLE.r * 2, SIDE_TABLE.r * 2, 0, SIDE_TABLE.h);
+  if (isPresent(SIDE_TABLE)) rect(SIDE_TABLE.x,SIDE_TABLE.z,SIDE_TABLE.r*2,SIDE_TABLE.r*2,0,SIDE_TABLE.h);
   if (isPresent(COFFEE_TABLE)) rect(COFFEE_TABLE.x, COFFEE_TABLE.z, COFFEE_TABLE.w, COFFEE_TABLE.d, COFFEE_TABLE.ry, COFFEE_TABLE.h);
   for (const l of FLOOR_LAMPS) rect(l.x, l.z, 0.34, 0.34, 0, 1.5);
   for (const p of PEDESTALS) rect(p.x, p.z, 0.5, 0.5, 0, 1.35);
+  if (isPresent(BENCH)) rect(BENCH.x, BENCH.z, BENCH.w, BENCH.d * 0.3, BENCH.ry, BENCH.h);
   for (const p of FLOOR_PLANTS) rect(p.x, p.z, 0.45 * p.scale, 0.45 * p.scale, 0, 1.0 * p.scale);
+  // 포털은 막지 않음(통과·클릭 트리거). 내비에서는 열어 둔다.
   return list;
 }

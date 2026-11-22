@@ -17,13 +17,7 @@ export interface Lighting {
   setWeather(kind: WeatherKind): void;
   setSpaceMood(space: SpaceId): void;
   setDayPhase(p: DayPhase): void;
-  /** 매 프레임: 가까운 램프에만 실제 빛을 주고, 구역 무드를 부드럽게 바꾼다 */
-  update(pos: THREE.Vector3, dt: number): void;
 }
-
-/** 실제 빛을 내는 램프 수(나머지는 전구 발광만). 빛 개수가 늘면 모든 화소 계산이 무거워진다. */
-const LAMP_SLOTS = 5;
-const LAMP_NEAR = 4;
 
 const WARM = 0xffb873;
 
@@ -124,67 +118,33 @@ export function buildLighting(
   let mood: SpaceId = 'shop';
   let dayPhase: DayPhase = 'day';
 
-  /**
-   * 캠퍼스 램프는 15개가 넘어 전부 실제 빛으로 켜면 GPU가 버거워진다.
-   * 빛 슬롯 LAMP_SLOTS개를 두고, 내 위치에서 가까운 LAMP_NEAR개 램프에만 서서히 켜 준다.
-   * 슬롯 수는 고정이라 셰이더를 다시 만들지 않는다.
-   */
-  let anchors: LampAnchor[] = [];
-  let boost = 1.05;
-  let boostTarget = 1.05;
-  const slots: { light: THREE.SpotLight; anchor: LampAnchor | null; k: number }[] = [];
-  for (let i = 0; i < LAMP_SLOTS; i++) {
-    const p = new THREE.SpotLight(WARM, 0, 0, 1.25, 0.85, 2);
-    points.push(p);
-    group.add(p, p.target);
-    slots.push({ light: p, anchor: null, k: 0 });
-  }
-  const placeSlot = (sl: (typeof slots)[number], a: LampAnchor) => {
-    sl.anchor = a;
-    sl.light.position.copy(a.position);
-    sl.light.target.position.set(a.position.x, 0, a.position.z);
-    sl.light.target.updateMatrixWorld();
-  };
-  const nearest = new Set<LampAnchor>();
-  const pickNearest = (pos: THREE.Vector3) => {
-    nearest.clear();
-    const sorted = anchors
-      .map((a) => ({ a, d: (a.position.x - pos.x) ** 2 + (a.position.z - pos.z) ** 2 }))
-      .sort((x, y) => x.d - y.d);
-    for (let i = 0; i < Math.min(LAMP_NEAR, sorted.length); i++) nearest.add(sorted[i]!.a);
-  };
-  let pickT = 0;
-  const updateLamps = (pos: THREE.Vector3, dt: number, instant = false) => {
-    pickT -= dt;
-    if (pickT <= 0 || instant) {
-      pickT = 0.25;
-      pickNearest(pos);
-    }
-    const fade = instant ? 1 : Math.min(1, dt * 2.5);
-    // 빠진 램프는 서서히 끄고, 꺼진 슬롯을 새로 가까워진 램프에 준다
-    for (const sl of slots) {
-      if (sl.anchor && !nearest.has(sl.anchor)) {
-        sl.k = Math.max(0, sl.k - fade);
-        if (sl.k === 0) sl.anchor = null;
-      }
-    }
-    for (const a of nearest) {
-      if (slots.some((sl) => sl.anchor === a)) continue;
-      const free = slots.find((sl) => !sl.anchor);
-      if (free) { placeSlot(free, a); free.k = instant ? 1 : 0; }
-    }
-    boost += (boostTarget - boost) * (instant ? 1 : Math.min(1, dt * 2));
-    for (const sl of slots) {
-      if (sl.anchor && nearest.has(sl.anchor)) sl.k = Math.min(1, sl.k + fade);
-      sl.light.intensity = sl.anchor ? (sl.anchor.kind === 'floor' ? 1.4 : 1.6) * boost * sl.k : 0;
-    }
-  };
-  let lastPos = new THREE.Vector3();
+  /** 활성 공간의 램프 앵커에 PointLight·Spot을 맞춘다. */
   const syncSpaceLamps = (space: SpaceId) => {
-    anchors = lampsBySpace[space] ?? [];
+    const anchors = lampsBySpace[space] ?? [];
     const bookstore = space === 'bookshop';
     const gallery = space === 'gallery';
-    boostTarget = bookstore ? 1.25 : gallery ? 1.15 : 1.05;
+    const boost = bookstore ? 1.3 : gallery ? 1.2 : 1;
+    while (points.length < anchors.length) {
+      const p = new THREE.SpotLight(WARM, 1.5, 0, 1.25, 0.85, 2);
+      points.push(p);
+      group.add(p, p.target);
+    }
+    for (let i = 0; i < points.length; i++) {
+      const a = anchors[i];
+      const p = points[i]!;
+      if (!a) {
+        p.intensity = 0;
+        p.visible = false;
+        continue;
+      }
+      p.visible = true;
+      p.position.copy(a.position);
+      p.target.position.set(a.position.x, 0, a.position.z);
+      p.target.updateMatrixWorld();
+      p.intensity = (a.kind === 'floor' ? 1.4 : 1.6) * boost;
+      p.distance = 0;
+      p.decay = 2;
+    }
     const pend = anchors.find((a) => a.kind === 'pendant') ?? anchors[0];
     if (pend) {
       spot.visible = true;
@@ -229,19 +189,18 @@ export function buildLighting(
 
   const applyMood = () => {
     syncSpaceLamps(mood);
-    // 한 캠퍼스: 창은 광장 쪽에 두고, 구역 무드만 살짝 바꾼다
+    const interior = mood !== 'shop'; // 창 없는 안쪽 방
     const bookstore = mood === 'bookshop';
     const gallery = mood === 'gallery';
-    const deep = mood === 'cowork' || mood === 'tech' || mood === 'challenge';
-    roomFill.intensity = bookstore ? 3.2 : gallery ? 3.0 : deep ? 2.6 : 2.2;
+    roomFill.intensity = bookstore ? 3.5 : gallery ? 3.3 : interior ? 2.8 : 1.8;
     roomFill.color.setHex(bookstore ? 0xffd4a0 : gallery ? 0xffead0 : 0xffe0b8);
-    key.intensity = lastQ.shadows ? 1.0 : 0.6;
-    hemi.intensity = bookstore || gallery ? 0.95 : 0.85;
+    key.intensity = interior ? 0.35 : (lastQ.shadows ? 1.1 : 0.65);
+    hemi.intensity = bookstore || gallery ? 0.95 : interior ? 0.85 : 0.8;
     hemi.color.setHex(bookstore ? 0xfff0dc : gallery ? 0xfff5ea : 0xffefd9);
     hemi.groundColor.setHex(0x685445);
     scene.environmentIntensity = 0.25;
-    patchMat.opacity = 0.08;
-    for (const p of patches) p.visible = true;
+    patchMat.opacity = interior ? 0 : 0.1;
+    for (const p of patches) p.visible = !interior;
     // 실제 시각(한국 시간): 아침은 차갑게, 해질녘은 주황빛, 밤은 창빛이 꺼지고 실내 조명이 주인공
     const d = DAY_LOOK[dayPhase];
     if (dayPhase !== 'day') {
@@ -250,75 +209,30 @@ export function buildLighting(
       patchMat.color.setHex(d.key);
     }
     key.intensity *= d.keyK;
-    hemi.intensity *= d.hemiK;
+    hemi.intensity *= interior ? 1 - (1 - d.hemiK) * 0.5 : d.hemiK;
     scene.environmentIntensity *= d.hemiK;
     patchMat.opacity *= d.keyK;
     roomFill.intensity *= d.fillK;
-    if (dayPhase === 'night') {
-      roomFill.intensity *= 0.7;
-      hemi.intensity *= 0.8;
+    // 창 없는 안쪽 방도 밤에는 방 전체 빛을 줄여 스탠드·펜던트가 주인공이 되게
+    if (interior && dayPhase === 'night') {
+      roomFill.intensity *= 0.55;
+      hemi.intensity *= 0.7;
     }
   };
 
-  /** 품질·날씨·무드·시간대로 빛 세기·색을 계산한다(그림자 맵은 건드리지 않음) */
-  const computeLook = (qq: QualityProfile) => {
+  const applyQuality = (qq: QualityProfile) => {
     lastQ = qq;
+    renderer.shadowMap.enabled = qq.shadows;
+    key.castShadow = qq.shadows;
+    if (qq.shadows) key.shadow.mapSize.set(qq.shadowMapSize, qq.shadowMapSize);
+    spot.castShadow = qq.shadows && qq.shadowLights >= 2;
+    spot.shadow.mapSize.set(1024, 1024);
     key.intensity = qq.shadows ? 1.25 : 0.35;
     patchMat.opacity = qq.shadows ? 0.1 : 0.32;
     hemi.intensity = qq.shadows ? 0.65 : 0.85;
     tintForWeather();
     applyWeatherBoost();
     applyMood();
-  };
-
-  // 구역 무드가 바뀔 때 빛을 한 번에 바꾸지 않고 1초쯤에 걸쳐 옮긴다
-  const lookNow = () => ({
-    key: key.intensity, keyC: key.color.clone(),
-    hemi: hemi.intensity, hemiC: hemi.color.clone(), hemiG: hemi.groundColor.clone(),
-    fill: roomFill.intensity, fillC: roomFill.color.clone(),
-    patch: patchMat.opacity, patchC: patchMat.color.clone(),
-    env: scene.environmentIntensity, spot: spot.intensity,
-  });
-  type Look = ReturnType<typeof lookNow>;
-  const setLook = (l: Look) => {
-    key.intensity = l.key; key.color.copy(l.keyC);
-    hemi.intensity = l.hemi; hemi.color.copy(l.hemiC); hemi.groundColor.copy(l.hemiG);
-    roomFill.intensity = l.fill; roomFill.color.copy(l.fillC);
-    patchMat.opacity = l.patch; patchMat.color.copy(l.patchC);
-    scene.environmentIntensity = l.env; spot.intensity = l.spot;
-  };
-  let lookTarget: Look | null = null;
-  const lerpLook = (k: number) => {
-    const t = lookTarget;
-    if (!t) return;
-    key.intensity += (t.key - key.intensity) * k; key.color.lerp(t.keyC, k);
-    hemi.intensity += (t.hemi - hemi.intensity) * k; hemi.color.lerp(t.hemiC, k); hemi.groundColor.lerp(t.hemiG, k);
-    roomFill.intensity += (t.fill - roomFill.intensity) * k; roomFill.color.lerp(t.fillC, k);
-    patchMat.opacity += (t.patch - patchMat.opacity) * k; patchMat.color.lerp(t.patchC, k);
-    scene.environmentIntensity += (t.env - scene.environmentIntensity) * k;
-    spot.intensity += (t.spot - spot.intensity) * k;
-    if (Math.abs(t.fill - roomFill.intensity) < 0.005 && Math.abs(t.hemi - hemi.intensity) < 0.002) {
-      setLook(t);
-      lookTarget = null;
-    }
-  };
-  /** 빛만 부드럽게 다시 맞춘다(그림자 맵을 다시 그리지 않음) */
-  const retarget = () => {
-    const before = lookNow();
-    computeLook(lastQ);
-    lookTarget = lookNow();
-    setLook(before);
-  };
-
-  const applyQuality = (qq: QualityProfile) => {
-    renderer.shadowMap.enabled = qq.shadows;
-    key.castShadow = qq.shadows;
-    if (qq.shadows) key.shadow.mapSize.set(qq.shadowMapSize, qq.shadowMapSize);
-    spot.castShadow = qq.shadows && qq.shadowLights >= 2;
-    spot.shadow.mapSize.set(1024, 1024);
-    computeLook(qq);
-    lookTarget = null;
-    updateLamps(lastPos, 0, true);
     key.shadow.map?.dispose();
     key.shadow.map = null;
     spot.shadow.map?.dispose();
@@ -335,26 +249,19 @@ export function buildLighting(
 
   const setWeather = (kind: WeatherKind) => {
     weather = kind;
-    retarget();
+    applyQuality(lastQ);
   };
 
   const setSpaceMood = (space: SpaceId) => {
-    if (space === mood) return;
     mood = space;
-    retarget();
+    applyQuality(lastQ);
   };
 
   const setDayPhase = (p: DayPhase) => {
     if (p === dayPhase) return;
     dayPhase = p;
-    retarget();
+    applyQuality(lastQ);
   };
 
-  const update = (pos: THREE.Vector3, dt: number) => {
-    lastPos.copy(pos);
-    updateLamps(pos, dt);
-    if (lookTarget) lerpLook(Math.min(1, dt * 2.5));
-  };
-
-  return { group, applyQuality, setWeather, setSpaceMood, setDayPhase, update };
+  return { group, applyQuality, setWeather, setSpaceMood, setDayPhase };
 }

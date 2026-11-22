@@ -11,7 +11,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 await page.goto('http://127.0.0.1:4173/?seed=1&quality=low&presence=local&weather=clear&autostart=1&npcchat=local');
 await page.waitForFunction(() => window.__YONGSEOJEOM_READY === true, {}, { timeout: 240000 });
-await page.evaluate(() => window.__YONGSEOJEOM.enterSpace('library'));
+await page.evaluate(() => window.__YONGSEOJEOM.enterSpace('bookshop'));
 await page.waitForFunction(() => !window.__YONGSEOJEOM.switchingSpace());
 await page.waitForTimeout(600);
 

@@ -51,31 +51,35 @@ test('폭 420px: 시작→입장→앉기→책 고르기→소리 켜기',async
  expect(errors).toEqual([]);await context.close();
 });
 
-test('캠퍼스 정원 초과 입장을 거절한다', async ({ context, page }) => {
-  await page.goto(url + '&cap=1');
-  await ready(page);
-  await page.evaluate(() => (window as any).__YONGSEOJEOM_LOOP.stop());
-  const visitor = await context.newPage();
-  await visitor.goto(url + '&cap=1');
-  await expect(visitor.locator('#full')).toBeVisible({ timeout: 60_000 });
-  await visitor.close();
+test('만석인 모임방 입장을 거절하고 용서점으로 복귀한다',async({context,page})=>{
+ await page.goto(url+'&cap=1');await ready(page);
+ await page.evaluate(()=> (window as any).__YONGSEOJEOM.enterSpace('circle'));
+ await page.evaluate(()=> (window as any).__YONGSEOJEOM_LOOP.stop());
+ const visitor=await context.newPage();await visitor.goto(url+'&cap=1');await ready(visitor);
+ await visitor.evaluate(()=> (window as any).__YONGSEOJEOM.enterSpace('circle'));
+ await expect.poll(()=>visitor.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe('shop');
+ expect(await visitor.evaluate(()=> (window as any).__YONGSEOJEOM.toasts().join(' '))).toContain('자리가 다 찼어요');
+ await visitor.close();
 });
 
-test('문틀로 책방·전시·마켓에 들어갔다가 광장으로 돌아온다', async ({ page }) => {
-  const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  await page.goto(url + '&cam=overview&autostart=1');
-  await ready(page);
-  const clickDoor = async (to: string) => {
-    const p = await page.evaluate((t) => (window as any).__YONGSEOJEOM.portals().find((d: any) => d.to === t), to);
-    expect(p).toBeTruthy();
-    await page.evaluate((portal) => (window as any).__YONGSEOJEOM.enterSpace(portal.to), p);
-    await expect.poll(() => page.evaluate(() => (window as any).__YONGSEOJEOM.space())).toBe(to);
-  };
-  for (const room of ['bookshop', 'gallery', 'market']) {
-    await clickDoor(room);
-    await clickDoor('shop');
-  }
-  expect(errors).toEqual([]);
+test('로비 문으로 책방·모임·전시 실험실에 들어갔다가 로비 문으로 돌아온다',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.goto(url+'&cam=overview');await ready(page);
+ const clickDoor=async(to:string)=>{
+  const p=await page.evaluate((t)=> (window as any).__YONGSEOJEOM.portals().find((d:any)=>d.to===t),to);
+  expect(p).toBeTruthy();
+  await page.evaluate((p)=> (window as any).__YONGSEOJEOM.cameraAt([p.x+Math.sin(p.ry)*2.2,1.65,p.z+Math.cos(p.ry)*2.2],[p.x,1.3,p.z]),p);
+  const xy=await page.evaluate((p)=> (window as any).__YONGSEOJEOM.project(p.x,1.2,p.z),p);
+  await page.mouse.click(xy.x,xy.y);
+  await expect(page.locator('#portal-sheet')).toBeVisible();
+  await page.locator('#portal-sheet [data-act="enter"]').click();
+  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.space())).toBe(to);
+  await expect.poll(()=>page.evaluate(()=> (window as any).__YONGSEOJEOM.switchingSpace())).toBe(false);
+ };
+ for(const room of ['bookshop','circle','gallery']){
+  await clickDoor(room);
+  console.log('들어감',room);
+  await clickDoor('shop');
+ }
+ expect(errors).toEqual([]);
 });

@@ -1,4 +1,4 @@
-// 서재·책방의 "이번 주 신간" 받침대. 표지가 보이게 세운 책 + 간판 + 클릭 상자.
+// 책방 실험실의 "이번 주 신간" 받침대. 표지가 보이게 세운 책 + 간판 + 클릭 상자.
 import * as THREE from 'three';
 import { Rng } from '../../core/rng';
 import { featuredBooks } from '../../reader/newReleases';
@@ -11,9 +11,9 @@ export interface NewReleaseHit {
   mesh: THREE.Mesh;
 }
 
-/** 캠퍼스 책방 구역 받침대(+z가 앞). 빌드 시 캠퍼스 레이아웃이 활성. */
+/** 공간별 받침대 자리(+z가 앞). */
 const PLACES: Partial<Record<SpaceId, { x: number; z: number; ry: number }>> = {
-  shop: { x: -10.35, z: -4.45, ry: Math.PI / 2 },
+  bookshop: { x: -2.35, z: 0.55, ry: Math.PI / 2 },
 };
 
 function plaqueTexture(title: string, sub: string): THREE.CanvasTexture {
