@@ -226,3 +226,9 @@
 - 작업 패널·책상 연출 코드는 남겨 두고 `isWorkSpace`가 항상 false(되살릴 때 방만 다시 추가). 정원은 예전 방 기준(로비 12·책방 8·모임 6·전시 8).
 - 캠퍼스 때 문제였던 램프 빛 과다는 방마다 램프가 2~5개라 해당 없음.
 - 검증: typecheck·build, test:layout 네 방, test:presence(로비 12·모임 6·전시 8), e2e 6/6(작업실 테스트 3개 삭제, 문 왕복은 책방·모임·전시). `capture-npc-roles` 6명 모두 걸어가 대화 창 열림, `capture-lab 24-rooms` 네 방 × 데스크톱·모바일 입장 시 아바타 보임, 콘솔 오류 0. Worker 재배포.
+
+## 2026-11-22 신간 기능 제거
+- 운영자 요청("책방 실험실에서 신간 기능 빼줘" → 범위 확인 결과 '전부 빼기').
+- 삭제: 책방 '이번 주 신간' 받침대(`props/newReleaseStand.ts`), 상단 「신간」 버튼과 시트(`ui/newReleaseSheet.ts`), 신간 데이터(`reader/newReleases.ts`), 관련 CSS, `scripts/check-new-releases.mjs`.
+- NPC: 대화 맥락에서 신간 목록을 빼고, 고요 선택 버튼은 '스테디셀러 / 관심 있는 주제'만(주제도 스테디셀러에서 고름). 로컬 안내 답·Worker 공간 지식에서 신간·받침대 언급 제거, 신간을 물으면 지금은 없다고 답하게 함.
+- 검증: typecheck·build(사이트·Worker), test:layout, e2e 6/6, `check-curator-guide.mjs` OK(신간 버튼 없음·스테디셀러 3권 답), `capture-lab 25-no-new` 네 방 입장 보임, 콘솔 오류 0. Worker 재배포.

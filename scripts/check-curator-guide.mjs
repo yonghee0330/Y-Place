@@ -1,4 +1,4 @@
-// 고요 선택 버튼: 네 → 11월 3주 신간 → 추천 답이 오고 다음 버튼이 남는지
+// 고요 선택 버튼: 네 → 스테디셀러 → 추천 답이 오고 다음 버튼이 남는지(신간 버튼은 없어야 함)
 import { chromium } from '@playwright/test';
 
 const browser = await chromium.launch({
@@ -23,12 +23,13 @@ await page.waitForSelector('.chat-choice');
 
 const first = await page.evaluate(() => [...document.querySelectorAll('.chat-choice')].map((b) => b.textContent));
 await page.click('.chat-choice'); // 네, 부탁해요 (첫 버튼)
-await page.waitForFunction(() => [...document.querySelectorAll('.chat-choice')].some((b) => b.textContent?.includes('신간')));
+await page.waitForFunction(() => [...document.querySelectorAll('.chat-choice')].some((b) => b.textContent?.includes('스테디셀러')));
 const second = await page.evaluate(() => [...document.querySelectorAll('.chat-choice')].map((b) => b.textContent));
-await page.click('button.chat-choice:has-text("11월 3주 신간")');
+await page.click('button.chat-choice:has-text("스테디셀러")');
 await page.waitForFunction(() => [...document.querySelectorAll('.chat-npc')].pop()?.textContent?.includes('「'));
 const reply = await page.evaluate(() => [...document.querySelectorAll('.chat-npc')].pop()?.textContent ?? '');
 const after = await page.evaluate(() => [...document.querySelectorAll('.chat-choice')].map((b) => b.textContent));
+const hudHasNew = await page.evaluate(() => !!document.querySelector('[data-act="newreleases"]'));
 await page.screenshot({ path: 'docs/screens/19-curator-guide.png' });
 
 console.log(JSON.stringify({ first, second, reply, after, errors }, null, 2));
@@ -36,7 +37,9 @@ await browser.close();
 
 const fail = [];
 if (!first.some((t) => t.includes('네'))) fail.push('offer');
-if (!second.some((t) => t.includes('신간'))) fail.push('source');
+if (!second.some((t) => t.includes('스테디셀러')) || second.some((t) => t.includes('신간'))) fail.push('source');
+if (after.some((t) => t.includes('신간'))) fail.push('after-newrelease');
+if (hudHasNew) fail.push('hud-newrelease');
 if (!reply.includes('「')) fail.push('reply');
 if (!after.some((t) => t.includes('다시'))) fail.push('after');
 if (errors.length) fail.push('console');

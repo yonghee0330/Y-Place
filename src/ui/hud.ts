@@ -27,8 +27,6 @@ export interface HudHandlers {
   settings(): void;
   /** 공간 이동 메뉴 */
   spaces(): void;
-  /** 이번 주 매체 신간 제안 */
-  newReleases(): void;
   sit(): void;
   nod(): void;
   drink(): void;
@@ -58,7 +56,6 @@ export class Hud {
       <div class="hud-top hud-right">
         <div class="pill pill-count" role="status" aria-live="polite">${icon('people')}<span class="count-num">1</span><span class="count-cap">/${ROOM_CAPACITY}</span></div>
         <button type="button" class="pill pill-icon" data-act="spaces" aria-label="공간 이동하기" aria-haspopup="dialog">${icon('door')}<span class="pill-text">공간</span></button>
-        <button type="button" class="pill pill-icon" data-act="newreleases" aria-label="이번 주 신간 보기" aria-haspopup="dialog">${icon('book')}<span class="pill-text">신간</span></button>
         <button type="button" class="pill pill-icon" data-act="sound" aria-label="서점 소리 켜기" aria-pressed="false">${icon('soundOff')}</button>
         <button type="button" class="pill pill-icon" data-act="settings" aria-label="설정 열기" aria-haspopup="dialog">${icon('gear')}</button>
       </div>
@@ -82,7 +79,6 @@ export class Hud {
 
     q('[data-act="exit"]').addEventListener('click', () => h.exit());
     q('[data-act="spaces"]').addEventListener('click', () => h.spaces());
-    q('[data-act="newreleases"]').addEventListener('click', () => h.newReleases());
     this.soundBtn.addEventListener('click', () => h.sound());
     q('[data-act="settings"]').addEventListener('click', () => h.settings());
     const guard = (fn: () => void) => (e: Event) => {

@@ -30,8 +30,6 @@ export class NpcChatSheet {
   onReply: ((npc: TalkNpcId, text: string) => void) | null = null;
   /** 보낼 때마다 지금 방·인원·날씨·자리·읽는 책을 모은다(개인정보는 닉네임만). */
   getSceneContext: (() => NpcSceneContext | null) | null = null;
-  /** 고요 가이드에서 "신간 목록 보기"를 눌렀을 때 */
-  onOpenNewReleases: (() => void) | null = null;
 
   constructor() {
     this.sheet.el.classList.add('chat-sheet');
@@ -148,7 +146,6 @@ export class NpcChatSheet {
     this.curatorStep = result.nextStep;
     this.render();
     this.onReply?.(npc, result.reply);
-    if (result.openList) this.onOpenNewReleases?.();
   }
 
   private async submit(): Promise<void> {

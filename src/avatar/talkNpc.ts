@@ -24,7 +24,7 @@ export const TALK_NPCS: TalkNpcDef[] = [
   { id: 'researcher', name: '실험 연구자 하랑', space: 'shop', x: 3.05, z: -2.45, ry: Math.atan2(-3.05, 4.35), color: '#3f6f8f', hair: 'short' },
   // 책방 두 매대 앞 가운데, 들어오는 방문자를 본다(입장하면 바로 보인다)
   { id: 'bookseller', name: '책방 실험자 서진', space: 'bookshop', x: 0.0, z: 0.6, ry: Math.atan2(-1.6, 1.0), color: '#a0553a', hair: 'bangs' },
-  // 책방 왼쪽 신간 받침대 옆, 입구 쪽을 본다(서재를 없애며 책방으로 옮김)
+  // 책방 왼쪽 안락의자 쪽, 입구를 본다(서재를 없애며 책방으로 옮김)
   { id: 'curator', name: '책 큐레이터 고요', space: 'bookshop', x: -2.35, z: -0.05, ry: Math.atan2(0.75, 1.65), color: '#4a5a7a', hair: 'bob' },
   // 모임방 서가 옆, 테이블을 본다
   { id: 'host', name: '모임 기획자 소담', space: 'circle', x: 0.95, z: -1.55, ry: Math.atan2(-0.95, 1.55), color: '#5b8a5a', hair: 'short' },
