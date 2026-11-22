@@ -12,11 +12,7 @@ function texture(paint: (c:CanvasRenderingContext2D)=>void): THREE.CanvasTexture
 }
 /** 방마다 간판 글(큰 제목 1~2줄 + 작은 설명 2줄)과 거는 자리. 'front'는 입구 쪽 앞벽(방 안을 봄). */
 const SIGNS: Partial<Record<SpaceId, { title: string[]; sub: string[]; x: number; wall: 'front' | 'back' }>> = {
-  shop: { title: ['Y-Place'], sub: ['메타공간 실험실', '책방·서재·모임·전시'], x: 2.6, wall: 'front' },
-  bookshop: { title: ['책방', '실험실'], sub: ['매대와 서가,', '책을 고르는 실험'], x: 0.6, wall: 'front' },
-  library: { title: ['서재'], sub: ['조용히,', '오래 읽는 방'], x: -0.6, wall: 'front' },
-  circle: { title: ['작은', '모임방'], sub: ['다섯 자리,', '함께 읽는 시간'], x: 0.65, wall: 'back' },
-  gallery: { title: ['전시실'], sub: ['걸고, 비추고,', '바라보는 실험'], x: -0.55, wall: 'front' },
+  shop: { title: ['Y-Place'], sub: ['한 공간 실험실', '구역을 걸으며 시험'], x: 3.2, wall: 'front' },
 };
 
 export function buildIdentity(): THREE.Group {

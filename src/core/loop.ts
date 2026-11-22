@@ -28,7 +28,12 @@ export class Loop {
 
   start(): void {
     // 캡처 스크립트가 스크린샷 직전에 루프를 멈출 수 있게 노출한다(소프트웨어 렌더링 대비).
-    (window as unknown as { __YONGSEOJEOM_LOOP: unknown }).__YONGSEOJEOM_LOOP = { stop: () => this.stop(), start: () => this.start() };
+    (window as unknown as { __YONGSEOJEOM_LOOP: unknown }).__YONGSEOJEOM_LOOP = {
+      stop: () => this.stop(),
+      start: () => this.start(),
+      /** 루프를 멈춘 뒤 한 프레임만 그려 캡처할 때 쓴다 */
+      tick: () => { this.renderer.info.reset(); this.render(); },
+    };
     if (this.running) return;
     this.running = true;
     this.last = performance.now();

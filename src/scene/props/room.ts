@@ -8,14 +8,16 @@ const WALL_T = 0.2;
 
 export function buildFloor(bucket: MergeBucket, rng: Rng): number {
   const r = rng.fork('floor');
-  const plankW = 0.12, gap = 0.0025, plankH = 0.022;
+  // 캠퍼스처럼 넓은 바닥은 널을 키워 생성량·드로우콜을 줄인다
+  const wide = ROOM.w * ROOM.d > 100;
+  const plankW = wide ? 0.28 : 0.12, gap = 0.0025, plankH = 0.022;
   let count = 0;
   const rows = Math.round(ROOM.d / plankW);
   for (let j = 0; j < rows; j++) {
     const z = ROOM.z0 + plankW * (j + 0.5);
     let x = ROOM.x0 - r.range(0, 0.9);
     while (x < ROOM.x1) {
-      const len = r.range(0.7, 1.5);
+      const len = r.range(wide ? 1.4 : 0.7, wide ? 2.8 : 1.5);
       const xa = Math.max(x, ROOM.x0), xb = Math.min(x + len, ROOM.x1);
       const l = xb - xa - gap;
       if (l > 0.05) {

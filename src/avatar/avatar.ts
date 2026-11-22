@@ -21,8 +21,8 @@ const SHOE = new THREE.Color('#2a211c');
 const GOLD = new THREE.Color('#c4a46a');
 const MOLE = new THREE.Color('#5a3a28');
 
-/** Y-Place 운영자의 옷 색(먼지 낀 핑크 티셔츠). 매니저는 look.color 대신 이 색을 쓴다. */
-export const MANAGER_COLOR = '#d6b0ab';
+/** Y-Place 운영자(매드 사이언티스트) 셔츠 색. 매니저는 look.color 대신 이 색을 쓴다. */
+export const MANAGER_COLOR = '#3a4654';
 
 /** 모든 아바타가 같이 쓰는 재질(색은 정점 색). */
 const SHARED = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 });
@@ -92,12 +92,17 @@ function headGeometry(hair: HairStyle): THREE.BufferGeometry {
     const fringe = new THREE.SphereGeometry(0.234, 24, 6, Math.PI * 0.1, Math.PI * 0.8, Math.PI * 0.18, Math.PI * 0.12);
     parts.push(paint(fringe, hc));
   } else if (hair === 'curtain') {
-    // Y-Place 운영자: 숱 많은 검은 머리에 흰머리가 섞인 커튼 헤어.
-    // 정수리는 이마 위까지만, 앞머리 띠가 눈썹 바로 위까지 내려오고, 옆머리는 귀 윗부분을 덮는다.
-    parts.push(top(Math.PI * 0.36, 0.08, 0.228));
-    parts.push(paint(hairShell(0.23, Math.PI * 0.7, Math.PI * 0.66), hc));
-    const fringe = new THREE.SphereGeometry(0.231, 24, 8, Math.PI * 0.16, Math.PI * 0.68, Math.PI * 0.2, Math.PI * 0.19);
+    // 매드 사이언티스트: 숱 많고 들뜬 커튼 헤어 + 정수리 삐침.
+    parts.push(top(Math.PI * 0.4, 0.12, 0.232));
+    parts.push(paint(hairShell(0.236, Math.PI * 0.65, Math.PI * 0.72), hc));
+    const fringe = new THREE.SphereGeometry(0.234, 24, 8, Math.PI * 0.14, Math.PI * 0.72, Math.PI * 0.18, Math.PI * 0.2);
     parts.push(paint(fringe, hc));
+    for (const [sx, ang] of [[-1, -0.55], [1, 0.45], [0.2, -0.15]] as const) {
+      const tuft = new THREE.ConeGeometry(0.028, 0.1, 7);
+      tuft.rotateZ(ang);
+      tuft.translate(sx * 0.04, 0.24, -0.02);
+      parts.push(paint(tuft, hc));
+    }
   } else {
     parts.push(top(Math.PI * 0.4, 0.32, 0.224));
     // 정수리 삐침
@@ -271,114 +276,88 @@ function shell(ys: number[], off: number, span: number, color: THREE.Color | Pai
   return paint(new THREE.LatheGeometry(pts, segs, -span / 2, span), color);
 }
 
-const CANVAS = new THREE.Color('#b08d5b'); // 면 캔버스 천
-const CANVAS_DARK = new THREE.Color('#93713f'); // 주머니 천
-const LEATHER = new THREE.Color('#5a3d28'); // 가죽 보강·허리띠
-const WEBBING = new THREE.Color('#6b4a30'); // 어깨끈
-const COPPER = new THREE.Color('#b87333'); // 리벳
-const STITCH = new THREE.Color('#e8dcc0'); // 박음질
+const COAT = new THREE.Color('#f4f1ea'); // 흰 실험 가운
+const COAT_EDGE = new THREE.Color('#e2ddd4');
+const COAT_LINING = new THREE.Color('#d8e8ef'); // 연한 청록 안감 느낌
+const PEN_BLUE = new THREE.Color('#2a5f9e');
+const PEN_RED = new THREE.Color('#b83232');
+const GOGGLE = new THREE.Color('#2c3238');
+const GOGGLE_LENS = new THREE.Color('#9ec9d8');
 const STEEL = new THREE.Color('#6d7075');
-const WOOD = new THREE.Color('#b07a45');
-const TAPE_YELLOW = new THREE.Color('#e6c02e');
-const PENCIL_RED = new THREE.Color('#c0392b');
-const PENCIL_TIP = new THREE.Color('#2b2b2b');
 const SOLE = new THREE.Color('#d9d2c5');
 
-/** 어깨끈: 가슴판 위쪽에서 어깨를 넘어 등 쪽 허리띠까지. */
-function strapGeometry(sx: number): THREE.BufferGeometry {
-  const x = sx * 0.056;
-  const at = (y: number, back: boolean, off = 0.011) => {
-    const rho = bodyR(y) + off;
-    const z = Math.sqrt(Math.max(0.0004, rho * rho - x * x));
-    return new THREE.Vector3(x, y, back ? -z : z);
-  };
-  const ys = [0.37, 0.4, 0.42, 0.438];
-  const pts: THREE.Vector3[] = [
-    at(0.335, false),
-    ...ys.map((y) => at(y, false)),
-    new THREE.Vector3(x, 0.462, 0),
-    ...ys.slice().reverse().map((y) => at(y, true)),
-    at(0.33, true), at(0.26, true), at(0.2, true), at(0.165, true, 0.016),
-  ];
-  const curve = new THREE.CatmullRomCurve3(pts);
-  return paint(new THREE.TubeGeometry(curve, 48, 0.0068, 6, false), WEBBING);
-}
-
-/** 목수 작업용 앞치마: 캔버스 가슴판 + 못주머니 + 가슴 주머니(연필) + 망치·줄자 + 가죽 허리띠. */
-function apronGeometry(): THREE.BufferGeometry {
+/** 매드 사이언티스트 흰 가운: 열린 앞자락·옷깃·주머니·펜. */
+function labCoatGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-
-  // 허리 아래 앞판: 아랫단은 가죽(앉았을 때 허벅지에 걸리지 않게 엉덩이선까지만)
-  parts.push(shell([0.022, 0.045, 0.05, 0.1, 0.15], 0.009, Math.PI * 0.62, (y) => (y <= 0.045 ? LEATHER : CANVAS), 24));
-  // 가슴판
-  parts.push(shell([0.15, 0.2, 0.26, 0.32, 0.345], 0.009, Math.PI * 0.34, CANVAS, 16));
-  // 가죽 허리띠(몸을 한 바퀴)
-  parts.push(shell([0.138, 0.168], 0.016, Math.PI * 2, LEATHER, 32));
-  const buckle = new THREE.BoxGeometry(0.028, 0.024, 0.008);
-  buckle.translate(0, 0.153, frontZ(0.153, 0, 0.02));
-  parts.push(paint(buckle, GOLD));
-
-  // 못주머니 + 윗단 가죽
-  parts.push(shell([0.04, 0.098, 0.102, 0.112], 0.017, Math.PI * 0.3, (y) => (y >= 0.1 ? LEATHER : CANVAS_DARK), 16));
+  // 뒷판·옆구리·소매 느낌 (앞은 열어 둔다)
+  parts.push(shell([0.015, 0.05, 0.11, 0.2, 0.3, 0.38, 0.43], 0.022, Math.PI * 1.55, COAT, 32));
+  // 왼쪽·오른쪽 앞자락(살짝 벌어진 두 패널)
   for (const sx of [-1, 1]) {
-    const x = sx * 0.026;
-    const seam = new THREE.BoxGeometry(0.004, 0.056, 0.004);
-    seam.translate(x, 0.07, frontZ(0.07, x, 0.017) + 0.001);
-    parts.push(paint(seam, STITCH));
+    const flap = shell([0.02, 0.08, 0.18, 0.3, 0.4], 0.024, Math.PI * 0.34, COAT, 14);
+    flap.rotateY(sx * 0.18);
+    parts.push(flap);
   }
-  for (const x of [-0.064, -0.024, 0.024, 0.064]) {
-    const rivet = new THREE.SphereGeometry(0.0045, 8, 6);
-    rivet.translate(x, 0.107, frontZ(0.107, x, 0.017) + 0.002);
-    parts.push(paint(rivet, COPPER));
+  // 옷깃
+  for (const sx of [-1, 1]) {
+    const collar = new THREE.BoxGeometry(0.07, 0.045, 0.012);
+    collar.rotateZ(sx * -0.35);
+    collar.rotateY(sx * 0.45);
+    collar.translate(sx * 0.05, 0.41, frontZ(0.41, sx * 0.04, 0.018));
+    parts.push(paint(collar, COAT_EDGE));
   }
-
-  // 가슴 주머니 + 연필
-  parts.push(shell([0.25, 0.283, 0.287, 0.295], 0.015, Math.PI * 0.2, (y) => (y >= 0.285 ? LEATHER : CANVAS_DARK), 12));
-  const pencil = new THREE.CylinderGeometry(0.0042, 0.0042, 0.054, 6);
-  pencil.rotateZ(0.1);
-  pencil.translate(-0.02, 0.3, frontZ(0.28, -0.02, 0.009));
-  parts.push(paint(pencil, (y) => (y > 0.318 ? PENCIL_TIP : PENCIL_RED)));
-
-  // 오른쪽 허리(아바타 기준)에 망치
-  {
-    const x = -0.094;
-    const a = Math.asin(x / (apronR(0.12) + 0.017));
-    const handle = new THREE.CylinderGeometry(0.006, 0.006, 0.1, 8);
-    handle.translate(x, 0.115, frontZ(0.115, x, 0.017));
-    parts.push(paint(handle, WOOD));
-    const head = new THREE.BoxGeometry(0.05, 0.017, 0.019);
-    head.rotateY(a);
-    head.translate(x, 0.18, frontZ(0.18, x, 0.017));
-    parts.push(paint(head, STEEL));
-    const loop = new THREE.BoxGeometry(0.02, 0.012, 0.02);
-    loop.rotateY(a);
-    loop.translate(x, 0.142, frontZ(0.142, x, 0.016));
-    parts.push(paint(loop, LEATHER));
+  // 허리 벨트 느낌
+  parts.push(shell([0.145, 0.165], 0.018, Math.PI * 1.5, COAT_EDGE, 24));
+  // 가슴 주머니 + 펜 2자루
+  parts.push(shell([0.26, 0.295, 0.3], 0.02, Math.PI * 0.22, COAT_LINING, 10));
+  for (const [dx, col] of [[-0.018, PEN_BLUE], [0.012, PEN_RED]] as const) {
+    const pen = new THREE.CylinderGeometry(0.0038, 0.0038, 0.055, 6);
+    pen.translate(dx, 0.3, frontZ(0.29, dx, 0.012));
+    parts.push(paint(pen, col));
   }
-
-  // 왼쪽 허리에 줄자
-  {
-    const x = 0.094;
-    const a = Math.asin(x / (apronR(0.11) + 0.02));
-    const tape = new THREE.CylinderGeometry(0.019, 0.019, 0.015, 14);
-    tape.rotateX(Math.PI / 2);
-    tape.rotateY(a);
-    tape.translate(x, 0.108, frontZ(0.108, x, 0.02));
-    parts.push(paint(tape, TAPE_YELLOW));
-    const tab = new THREE.BoxGeometry(0.012, 0.008, 0.008);
-    tab.rotateY(a);
-    tab.translate(x + 0.012, 0.086, frontZ(0.086, x + 0.012, 0.02));
-    parts.push(paint(tab, PENCIL_TIP));
-    const clip = new THREE.BoxGeometry(0.012, 0.03, 0.012);
-    clip.rotateY(a);
-    clip.translate(x, 0.134, frontZ(0.134, x, 0.016));
-    parts.push(paint(clip, LEATHER));
+  // 아래 주머니 두 개
+  for (const sx of [-1, 1]) {
+    const pocket = shell([0.06, 0.1, 0.108], 0.02, Math.PI * 0.2, COAT_EDGE, 10);
+    pocket.translate(sx * 0.02, 0, 0);
+    parts.push(pocket);
   }
-
-  parts.push(strapGeometry(-1), strapGeometry(1));
+  // 단추 줄
+  for (let i = 0; i < 4; i++) {
+    const y = 0.34 - i * 0.07;
+    const btn = new THREE.SphereGeometry(0.006, 8, 6);
+    btn.translate(0.012, y, frontZ(y, 0.01, 0.017));
+    parts.push(paint(btn, STEEL));
+  }
   const g = merge(parts);
   g.scale(TORSO_S.x, TORSO_S.y, TORSO_S.x * TORSO_DEPTH);
   return g;
+}
+
+/** 머리 위 고글(이마에 올려 둔 상태). */
+function gogglesGeometry(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const y = 0.12;
+  const z = 0.05;
+  for (const sx of [-1, 1]) {
+    const rim = new THREE.TorusGeometry(0.038, 0.006, 8, 20);
+    rim.scale(1, 0.85, 1);
+    rim.rotateX(-0.55);
+    rim.translate(sx * 0.055, y, z);
+    parts.push(paint(rim, GOGGLE));
+    const lens = new THREE.CircleGeometry(0.032, 16);
+    lens.rotateX(-0.55);
+    lens.translate(sx * 0.055, y, z + 0.004);
+    parts.push(paint(lens, GOGGLE_LENS));
+  }
+  const bridge = new THREE.BoxGeometry(0.04, 0.008, 0.008);
+  bridge.rotateX(-0.55);
+  bridge.translate(0, y + 0.01, z);
+  parts.push(paint(bridge, GOGGLE));
+  const strap = new THREE.TorusGeometry(0.2, 0.006, 6, 24, Math.PI * 1.2);
+  strap.rotateX(Math.PI / 2);
+  strap.rotateZ(Math.PI);
+  strap.translate(0, 0.08, -0.02);
+  parts.push(paint(strap, GOGGLE));
+  return merge(parts);
 }
 
 /** 동글동글한 눈(머리 기준 좌표). */
@@ -533,7 +512,7 @@ function heldBookGeometry(cover: THREE.Color): THREE.BufferGeometry {
 export interface AvatarLook {
   color: string;
   hair: HairStyle;
-  /** Y-Place 운영자 전용 외형(안경·수염·목수 앞치마 등) */
+  /** Y-Place 운영자 전용 외형(안경·수염·흰 가운·고글 등) */
   manager?: boolean;
 }
 
@@ -599,7 +578,7 @@ export class Avatar {
     this.root.add(this.body);
     this.body.position.y = HIP_Y;
     add(this.body, bodyGeometry(outfit));
-    if (this.look.manager) add(this.body, apronGeometry());
+    if (this.look.manager) add(this.body, labCoatGeometry());
 
     this.body.add(this.head);
     this.head.position.y = NECK_TOP;
@@ -611,6 +590,7 @@ export class Avatar {
     if (this.look.manager) {
       add(this.headModel, faceExtrasGeometry());
       add(this.headModel, glassesGeometry());
+      add(this.headModel, gogglesGeometry());
     } else {
       add(this.headModel, noseGeometry());
     }

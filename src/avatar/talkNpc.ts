@@ -1,6 +1,5 @@
-// 말 걸 수 있는 NPC: 방마다 역할이 다른 안내인(로비 바리스타·실험 연구자, 책방 실험자,
-// 서재 책 큐레이터, 모임방 모임 기획자, 전시실 전시 큐레이터). 가까이 가면 대화할 수 있고,
-// 근처에 있는 동안 고개(몸)를 방문자 쪽으로 돌린다.
+// 말 걸 수 있는 NPC: 캠퍼스 구역마다 역할이 다른 안내인.
+// 가까이 가면 대화할 수 있고, 근처에 있는 동안 고개(몸)를 방문자 쪽으로 돌린다.
 import * as THREE from 'three';
 import type { TalkNpcId } from '../net/npcChat';
 import type { SpaceId } from '../scene/layout';
@@ -18,18 +17,18 @@ export interface TalkNpcDef {
 }
 
 export const TALK_NPCS: TalkNpcDef[] = [
-  // 커피 코너 앞, 방 안쪽을 보고 선다
-  { id: 'barista', name: '바리스타 모카', space: 'shop', x: -4.1, z: 0.95, ry: Math.PI / 2, color: '#6b4a32', hair: 'bob' },
-  // 로비 뒤 창과 전시실 문 사이, 로비 가운데를 본다
-  { id: 'researcher', name: '실험 연구자 하랑', space: 'shop', x: 3.05, z: -2.45, ry: Math.atan2(-3.05, 4.35), color: '#3f6f8f', hair: 'short' },
-  // 책방 두 매대 앞 가운데, 들어오는 방문자를 본다(입장하면 바로 보인다)
-  { id: 'bookseller', name: '책방 실험자 서진', space: 'bookshop', x: 0.0, z: 0.6, ry: Math.atan2(-1.6, 1.0), color: '#a0553a', hair: 'bangs' },
-  // 서재 오른쪽 서가 앞, 열람 테이블 쪽을 본다
-  { id: 'curator', name: '책 큐레이터 고요', space: 'library', x: 2.0, z: -1.6, ry: Math.atan2(-0.9, 1.6), color: '#4a5a7a', hair: 'bob' },
-  // 모임방 서가 옆, 테이블을 본다
-  { id: 'host', name: '모임 기획자 소담', space: 'circle', x: 0.95, z: -1.55, ry: Math.atan2(-0.95, 1.55), color: '#5b8a5a', hair: 'short' },
-  // 전시실 뒤쪽 작품 앞, 들어오는 방문자를 본다
-  { id: 'docent', name: '전시 큐레이터 윤슬', space: 'gallery', x: -0.75, z: -1.55, ry: Math.atan2(-0.85, 2.45), color: '#2f3340', hair: 'bob' },
+  // 광장 커피 코너
+  { id: 'barista', name: '바리스타 모카', space: 'shop', x: -2.9, z: 1.85, ry: Math.PI / 2, color: '#6b4a32', hair: 'bob' },
+  // 광장 가운데를 보는 연구자
+  { id: 'researcher', name: '실험 연구자 하랑', space: 'shop', x: 2.4, z: -0.8, ry: Math.atan2(-2.4, 2.5), color: '#3f6f8f', hair: 'short' },
+  // 책방 매대 앞
+  { id: 'bookseller', name: '책방 실험자 서진', space: 'bookshop', x: -8.0, z: -4.2, ry: Math.atan2(0.2, 1.2), color: '#a0553a', hair: 'bangs' },
+  // 책방 서가 쪽(옛 서재 큐레이터 → 책방 구역)
+  { id: 'curator', name: '책 큐레이터 고요', space: 'bookshop', x: -6.2, z: -5.8, ry: Math.atan2(-1.5, 1.2), color: '#4a5a7a', hair: 'bob' },
+  // 모임 원탁 옆
+  { id: 'host', name: '모임 기획자 소담', space: 'circle', x: -7.1, z: -0.2, ry: Math.atan2(-1.1, 1.4), color: '#5b8a5a', hair: 'short' },
+  // 전시 작품 앞
+  { id: 'docent', name: '전시 큐레이터 윤슬', space: 'gallery', x: -0.6, z: -5.8, ry: Math.atan2(-0.4, 2.2), color: '#2f3340', hair: 'bob' },
 ];
 
 /** 대화 버튼이 뜨는 거리(m) */
@@ -54,8 +53,9 @@ export function spawnTalkNpcs(crowd: Crowd): TalkNpc[] {
   });
 }
 
-export function syncTalkNpcs(list: TalkNpc[], space: SpaceId, enabled: boolean): void {
-  for (const n of list) n.actor.root.visible = enabled && n.def.space === space;
+/** 한 캠퍼스라 구역과 관계없이 모두 보이게 한다. */
+export function syncTalkNpcs(list: TalkNpc[], _space: SpaceId, enabled: boolean): void {
+  for (const n of list) n.actor.root.visible = enabled;
 }
 
 const angleTo = (a: number, b: number, k: number) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;

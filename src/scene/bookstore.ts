@@ -7,7 +7,7 @@ import type { LoadingScreen } from '../ui/loading';
 import { buildExterior, type Exterior } from './exterior';
 import { MergeBucket, trs } from './geom';
 import {
-  ARMCHAIRS, COUNTER, FLOOR_PLANTS, SPACE_ORDER, applyLayout, type SpaceId,
+  ARMCHAIRS, COUNTER, FLOOR_PLANTS, BUILD_SPACES, SPACE_ORDER, applyLayout, type SpaceId,
 } from './layout';
 import { buildLighting, type Lighting } from './lighting';
 import { createMaterials } from './materials';
@@ -80,11 +80,18 @@ function buildOneSpace(
 
   const comps = buildShelves(bucket, rng.fork(`${id}-shelf`));
   const br = rng.fork(`${id}-books`);
-  const faceStep = id === 'bookshop' || id === 'library' ? 0.2 : 0.25;
+  const faceStep = 0.22;
+  // 캠퍼스는 서가·칸이 많아 전부 채우면 로딩이 무거워, 칸을 건너뛰며 채운다.
+  const sparse = id === 'shop';
   comps.forEach((c, i) => {
-    if(c.display) {
-      for(let j=0;j<Math.floor(c.width/faceStep);j++) displayBook(c.matrix.clone().multiply(trs(.1+j*faceStep,0,.015,0,0)),br.fork(`display-${i}-${j}`),books,bucket);
-    } else fillCompartment(c, br.fork(`c${i}`), books, bucket);
+    if (sparse && i % 2 === 1 && !c.display) return;
+    if (c.display) {
+      for (let j = 0; j < Math.floor(c.width / faceStep); j++) {
+        displayBook(c.matrix.clone().multiply(trs(0.1 + j * faceStep, 0, 0.015, 0, 0)), br.fork(`display-${i}-${j}`), books, bucket);
+      }
+    } else {
+      fillCompartment(c, br.fork(`c${i}`), books, bucket);
+    }
   });
   windows.forEach((w, i) => {
     const r = rng.fork(`${id}-sill-${i}`);
@@ -99,7 +106,7 @@ function buildOneSpace(
   ARMCHAIRS.forEach((c,i)=>buildWingbackArmchair(bucket,rng.fork(`armchair-${i}`),trs(c.x,0,c.z,0,c.ry)));
   buildBarTable(bucket, rng, books);
   buildCounter(bucket, rng, books);
-  if (id === 'bookshop') buildCounterStool(bucket, rng);
+  if (COUNTER.w > 0.1) buildCounterStool(bucket, rng);
   buildSofa(bucket, rng);
   buildBench(bucket, rng, books);
   buildCoffeeTable(bucket, rng, books);
@@ -155,14 +162,19 @@ export async function buildBookstore(
   const sharedGlass: { mesh: THREE.Mesh | null } = { mesh: null };
 
   await loading.begin('바닥·벽');
-  for (const id of SPACE_ORDER) {
+  // 한 캠퍼스만 빌드하고, 구역 id는 같은 메시를 가리킨다.
+  for (const id of BUILD_SPACES) {
     const built = buildOneSpace(id, mats, rng.fork(id), sharedGlass);
     spaces[id] = built.view;
     totalBooks += built.books;
     totalPlanks += built.planks;
     lampsBySpace[id] = built.lamps;
-    built.view.group.visible = id === 'shop';
+    built.view.group.visible = true;
     root.add(built.view.group);
+  }
+  for (const id of SPACE_ORDER) {
+    if (!spaces[id]) spaces[id] = spaces.shop;
+    if (!lampsBySpace[id]) lampsBySpace[id] = lampsBySpace.shop;
   }
   applyLayout('shop');
 
@@ -181,16 +193,11 @@ export async function buildBookstore(
 
   let activeSpace: SpaceId = 'shop';
   const setActiveSpace = (id: SpaceId) => {
-    if (id === activeSpace) return;
-    spaces[activeSpace].group.visible = false;
     activeSpace = id;
-    spaces[id].group.visible = true;
     applyLayout(id);
-    // 창밖·비는 허브에만 의미 있음 — 서브룸에서는 꺼 둠
-    exterior.group.visible = id === 'shop';
-    windowRain.mesh.visible = id === 'shop' && q.windowRainShader;
+    exterior.group.visible = true;
+    windowRain.mesh.visible = !!q.windowRainShader;
     lighting.setSpaceMood(id);
-    renderer.shadowMap.needsUpdate = true;
   };
 
   return {

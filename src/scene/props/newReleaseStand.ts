@@ -11,10 +11,9 @@ export interface NewReleaseHit {
   mesh: THREE.Mesh;
 }
 
-/** 공간별 받침대 자리(+z가 앞). */
+/** 캠퍼스 책방 구역 받침대(+z가 앞). 빌드 시 캠퍼스 레이아웃이 활성. */
 const PLACES: Partial<Record<SpaceId, { x: number; z: number; ry: number }>> = {
-  library: { x: 0.05, z: -1.52, ry: 0 },
-  bookshop: { x: -2.35, z: 0.55, ry: Math.PI / 2 },
+  shop: { x: -10.35, z: -4.45, ry: Math.PI / 2 },
 };
 
 function plaqueTexture(title: string, sub: string): THREE.CanvasTexture {

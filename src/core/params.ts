@@ -34,10 +34,10 @@ export const DEFAULT_SEED = 86;
 /** 입장 장소는 한 곳. 번호로 방을 나누지 않는다. */
 export const ROOM_NAME = 'Y-Place';
 
-/** 실험실 로비 기본 정원. NPC는 세지 않는다. */
-export const ROOM_CAPACITY = 12;
-/** 공간별 정원 상한(강연장 등). presence·ws 클램프에 쓴다. */
-export const MAX_SPACE_CAPACITY = 12;
+/** 캠퍼스 기본 정원. NPC는 세지 않는다. */
+export const ROOM_CAPACITY = 20;
+/** 정원 상한. presence·ws 클램프에 쓴다. */
+export const MAX_SPACE_CAPACITY = 20;
 
 export function readParams(search = location.search): Params {
   const q = new URLSearchParams(search);
