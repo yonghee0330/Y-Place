@@ -1,7 +1,7 @@
 // 스탠드 조명 2개, 펜던트 조명 3개. 빛 위치는 lighting.ts가 받아 쓴다.
 import * as THREE from 'three';
 import { MergeBucket, trs } from '../geom';
-import { FLOOR_LAMPS, PENDANTS, ROOM, ISLANDS } from '../layout';
+import { FLOOR_LAMPS, PENDANTS, ROOM, ISLANDS, READING_TABLE, isPresent } from '../layout';
 
 export interface LampAnchor { kind: 'floor' | 'pendant'; position: THREE.Vector3 }
 
@@ -52,6 +52,22 @@ export function buildLamps(bucket: MergeBucket): LampAnchor[] {
     bucket.add('lampShade',shade,trs(x,y+.28,z));
     bucket.add('bulb',new THREE.SphereGeometry(.025,12,8),trs(x,y+.35,z));
     anchors.push({kind:'floor',position:new THREE.Vector3(x,y+.32,z)});
+  }
+  // 서재 열람 테이블 위 탁상 램프(책 읽는 자리에 따뜻한 점광)
+  if (isPresent(READING_TABLE) && READING_TABLE.w > 0.1) {
+    const x = READING_TABLE.x + 0.55;
+    const z = READING_TABLE.z + 0.05;
+    const y = READING_TABLE.h;
+    bucket.add('brass', new THREE.CylinderGeometry(0.07, 0.085, 0.014, 20), trs(x, y + 0.007, z));
+    bucket.add('brass', new THREE.CylinderGeometry(0.007, 0.007, 0.28, 10), trs(x, y + 0.15, z));
+    const shade = pleated(
+      new THREE.LatheGeometry([new THREE.Vector2(0.08, 0.18), new THREE.Vector2(0.085, 0.175), new THREE.Vector2(0.14, 0)], 64),
+      36,
+      0.004,
+    );
+    bucket.add('lampShade', shade, trs(x, y + 0.24, z));
+    bucket.add('bulb', new THREE.SphereGeometry(0.022, 12, 8), trs(x, y + 0.3, z));
+    anchors.push({ kind: 'floor', position: new THREE.Vector3(x, y + 0.28, z) });
   }
   return anchors;
 }

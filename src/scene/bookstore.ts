@@ -80,7 +80,7 @@ function buildOneSpace(
 
   const comps = buildShelves(bucket, rng.fork(`${id}-shelf`));
   const br = rng.fork(`${id}-books`);
-  const faceStep = id === 'bookshop' ? 0.2 : 0.25;
+  const faceStep = id === 'bookshop' || id === 'library' ? 0.2 : 0.25;
   comps.forEach((c, i) => {
     if(c.display) {
       for(let j=0;j<Math.floor(c.width/faceStep);j++) displayBook(c.matrix.clone().multiply(trs(.1+j*faceStep,0,.015,0,0)),br.fork(`display-${i}-${j}`),books,bucket);

@@ -89,13 +89,25 @@ export function buildReadingTable(bucket: MergeBucket, rng: Rng, books: BookColl
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     woodPart(bucket, r, 'honey', taperLeg(h - topT, 0.045, 0.028), 'y', at(trs(sx * (w / 2 - 0.06), 0, sz * (d / 2 - 0.06))));
   }
-  // 테이블 위: 펼친 책 한 권, 눕힌 책 두 권, 머그
-  stackBooks(at(trs(0.3, h, -0.1, 0, 0.3)), r, books, 2);
-  openBook(bucket, at(trs(-0.28, h + 0.003, 0.05, 0, 0.12)));
+  // 테이블 위: 펼친 책·더미·표지 진열·노트·머그·쪽지
+  stackBooks(at(trs(0.55, h, -0.18, 0, 0.25)), r, books, 3);
+  stackBooks(at(trs(0.62, h, 0.2, 0, -0.2)), r, books, 2);
+  stackBooks(at(trs(-0.62, h, -0.22, 0, 0.15)), r, books, 2);
+  openBook(bucket, at(trs(-0.22, h + 0.003, 0.08, 0, 0.1)));
+  displayBook(at(trs(0.28, h, 0.22, 0, -0.35)), r, books, bucket);
+  displayBook(at(trs(-0.55, h, 0.18, 0, 0.4)), r, books, bucket);
+  // 노트·펜
+  bucket.add('walnut', bevelBox(0.16, 0.012, 0.22, 0.002), at(trs(0.12, h + 0.006, -0.22, 0, 0.2)), 0x3a4a38);
+  bucket.add('paper', new THREE.PlaneGeometry(0.14, 0.19), at(trs(0.12, h + 0.014, -0.22, -Math.PI / 2, 0.2)));
+  bucket.add('brass', new THREE.CylinderGeometry(0.004, 0.004, 0.14, 6), at(trs(0.22, h + 0.012, -0.12, 0, 0.4, Math.PI / 2)));
+  // 머그
   const mug = new THREE.CylinderGeometry(0.04, 0.037, 0.095, 20, 1, false);
-  bucket.add('ceramic', mug, at(trs(0.05, h + 0.0475, -0.12)), 0xd9c6a5);
+  bucket.add('ceramic', mug, at(trs(-0.05, h + 0.0475, -0.28)), 0xd9c6a5);
   const handle = new THREE.TorusGeometry(0.025, 0.007, 8, 16, Math.PI);
-  bucket.add('ceramic', handle, at(trs(0.093, h + 0.05, -0.12, 0, 0, -Math.PI / 2)), 0xd9c6a5);
+  bucket.add('ceramic', handle, at(trs(-0.007, h + 0.05, -0.28, 0, 0, -Math.PI / 2)), 0xd9c6a5);
+  // 추천 쪽지·책갈피
+  bucket.add('paper', new THREE.PlaneGeometry(0.08, 0.05), at(trs(0.35, h + 0.003, -0.05, -Math.PI / 2 + 0.12)), 0xf5e6c8);
+  bucket.add('kraft', new THREE.PlaneGeometry(0.03, 0.12), at(trs(-0.38, h + 0.06, 0.05, 0.2, 0.3)), 0xb8895a);
 
   CHAIRS.forEach((c, i) => buildChair(bucket, r.fork(`chair-${i}`), trs(c.x, 0, c.z, 0, c.ry)));
 }
